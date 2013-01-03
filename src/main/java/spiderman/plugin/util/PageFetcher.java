@@ -21,7 +21,10 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.zip.GZIPInputStream;
 
 import org.apache.http.Header;
@@ -45,6 +48,7 @@ import org.apache.http.conn.ssl.SSLSocketFactory;
 import org.apache.http.entity.HttpEntityWrapper;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.impl.conn.tsccm.ThreadSafeClientConnManager;
+import org.apache.http.impl.cookie.BasicClientCookie;
 import org.apache.http.params.BasicHttpParams;
 import org.apache.http.params.CoreConnectionPNames;
 import org.apache.http.params.CoreProtocolPNames;
@@ -61,18 +65,21 @@ import org.eweb4j.spiderman.fetcher.Status;
  */
 public class PageFetcher {
 
-	protected ThreadSafeClientConnManager connectionManager;
+	private ThreadSafeClientConnManager connectionManager;
 
-	protected DefaultHttpClient httpClient;
+	private DefaultHttpClient httpClient;
 
-	protected final Object mutex = new Object();
+	private final Object mutex = new Object();
 
-	protected long lastFetchTime = 0;
+	private long lastFetchTime = 0;
 	
-	protected SpiderConfig config;
-
-	public PageFetcher(SpiderConfig aconfig) {
+	private final SpiderConfig config;
+	
+	private final ConcurrentLinkedQueue<Cookie> cookies;
+	
+	public PageFetcher(SpiderConfig aconfig, final List<Cookie> cookies) {
 		this.config = aconfig;
+		this.cookies = new ConcurrentLinkedQueue<Cookie>(cookies);
 		HttpParams params = new BasicHttpParams();
 		HttpProtocolParamBean paramsBean = new HttpProtocolParamBean(params);
 		paramsBean.setVersion(HttpVersion.HTTP_1_1);
@@ -83,8 +90,8 @@ public class PageFetcher {
 		params.setIntParameter(CoreConnectionPNames.SO_TIMEOUT, config.getSocketTimeout());
 		params.setIntParameter(CoreConnectionPNames.CONNECTION_TIMEOUT, config.getConnectionTimeout());
 
-		params.setBooleanParameter("http.protocol.handle-redirects", false);
-
+//		params.setBooleanParameter("http.protocol.handle-redirects", true);
+		
 		SchemeRegistry schemeRegistry = new SchemeRegistry();
 		schemeRegistry.register(new Scheme("http", 80, PlainSocketFactory.getSocketFactory()));
 
@@ -96,7 +103,17 @@ public class PageFetcher {
 		connectionManager.setMaxTotal(config.getMaxTotalConnections());
 		connectionManager.setDefaultMaxPerRoute(config.getMaxConnectionsPerHost());
 		httpClient = new DefaultHttpClient(connectionManager, params);
-
+//		httpClient.getParams().setIntParameter("http.socket.timeout", 15000);
+		for (Cookie cookie : cookies) {
+			String name = cookie.name();
+			String value = cookie.value();
+			BasicClientCookie clientCookie = new BasicClientCookie(name, value);
+			clientCookie.setPath(cookie.path());
+			clientCookie.setDomain(cookie.domain());
+			httpClient.getCookieStore().addCookie(clientCookie);
+		}
+		httpClient.getParams().setIntParameter("http.socket.timeout", 15000);
+		
 		if (config.getProxyHost() != null) {
 
 			if (config.getProxyUsername() != null) {
@@ -177,6 +194,7 @@ public class PageFetcher {
 			if (entity != null) {
 				fetchResult.setStatusCode(HttpStatus.SC_OK);
 				Page page = load(entity);
+				page.setUrl(fetchResult.getFetchedUrl());
 				fetchResult.setPage(page);
 				return fetchResult;
 			} else {
@@ -224,9 +242,15 @@ public class PageFetcher {
 		String contentCharset = EntityUtils.getContentCharSet(entity);
 		page.setCharset(contentCharset);
 		
-//		byte[] contentData = EntityUtils.toByteArray(entity);
-		String content = read(entity.getContent(), config.getCharset());
+//		byte[] contentData = read(entity.getContent());
+//		page.setContentData(contentData);
+		String charset = config.getCharset();
+		String content = read(entity.getContent(), charset);
 		page.setContent(content);
+		if (charset == null || charset.trim().length() == 0)
+			page.setContentData(content.getBytes());
+		else
+			page.setContentData(content.getBytes(charset));
 		
 		return page;
 	}
@@ -249,6 +273,31 @@ public class PageFetcher {
 
 		return sb.toString();
 	}
+	
+	private byte[] read(final InputStream inputStream) throws Exception {
+		byte[] bytes = new byte[1000];
+		int i = 0;
+		int b;
+		try {
+			while ((b = inputStream.read()) != -1) {
+				bytes[i++] = (byte) b;
+				if (bytes.length == i) {
+					byte[] newBytes = new byte[(bytes.length * 3) / 2 + 1];
+					for (int j = 0; j < bytes.length; j++) {
+						newBytes[j] = bytes[j];
+					}
+					bytes = newBytes;
+				}
+			}
+		} catch (IOException e) {
+			throw new Exception("There was a problem reading stream.", e);
+		}
+
+		byte[] copy = Arrays.copyOf(bytes, i);
+
+		return copy;
+	}
+
 
 	public HttpClient getHttpClient() {
 		return httpClient;

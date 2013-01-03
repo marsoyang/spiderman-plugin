@@ -1,5 +1,6 @@
 package spiderman.plugin.impl;
 
+import java.util.List;
 import java.util.Map;
 
 import org.eweb4j.spiderman.fetcher.Page;
@@ -21,13 +22,12 @@ public class ParsePointImpl implements ParsePoint{
 		this.listener = listener;
 	}
 	
-	public Map<String, Object> parse(Map<String, Object> model) throws Exception {
+	public List<Map<String, Object>> parse(List<Map<String, Object>> models) throws Exception {
 		return parseTargetModelByXpathAndRegex();
 	}
 
-	private Map<String,Object> parseTargetModelByXpathAndRegex() throws Exception {
+	private List<Map<String,Object>> parseTargetModelByXpathAndRegex() throws Exception {
 		ModelParser parser = new ModelParser(target, listener);
-		Map<String, Object> map = parser.parse(page.getContent());
-		return map;
+		return parser.parse(page);
 	}
 }

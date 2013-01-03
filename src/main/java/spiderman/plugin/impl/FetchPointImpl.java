@@ -1,10 +1,13 @@
 package spiderman.plugin.impl;
 
+import java.util.ArrayList;
+
 import org.eweb4j.spiderman.fetcher.FetchResult;
 import org.eweb4j.spiderman.plugin.FetchPoint;
 import org.eweb4j.spiderman.spider.SpiderListener;
 import org.eweb4j.spiderman.task.Task;
 
+import spiderman.plugin.util.Cookie;
 import spiderman.plugin.util.PageFetcher;
 import spiderman.plugin.util.SpiderConfig;
 
@@ -22,7 +25,7 @@ public class FetchPointImpl implements FetchPoint{
 		
 		SpiderConfig config = new SpiderConfig();
 		config.setCharset(task.site.getCharset());
-		return  new PageFetcher(config).fetchHeader(task.url);
+		return  new PageFetcher(config, new ArrayList<Cookie>()).fetchHeader(task.url);
 		
 //		return fetch();
 	}
@@ -40,6 +43,8 @@ public class FetchPointImpl implements FetchPoint{
 //        } else {
 //        	org.eweb4j.spiderman.fetcher.Page _page = new org.eweb4j.spiderman.fetcher.Page();
 //			_page.setContent(page.getContent());
+//			_page.setContentType("text/html");
+//			_page.setContentData(page.getContent().getBytes());
 //			_page.setCharset(page.getCharset());
 //			_page.setUrl(page.getUrl());
 //			fetchResult.setPage(_page);
