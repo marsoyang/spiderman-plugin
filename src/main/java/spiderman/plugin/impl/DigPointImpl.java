@@ -4,6 +4,9 @@ import java.util.Collection;
 import java.util.HashSet;
 
 import org.eweb4j.spiderman.fetcher.FetchResult;
+import org.eweb4j.spiderman.infra.DefaultLinkFinder;
+import org.eweb4j.spiderman.infra.FrameLinkFinder;
+import org.eweb4j.spiderman.infra.IframeLinkFinder;
 import org.eweb4j.spiderman.plugin.DigPoint;
 import org.eweb4j.spiderman.spider.SpiderListener;
 import org.eweb4j.spiderman.task.Task;
@@ -40,6 +43,9 @@ public class DigPointImpl implements DigPoint{
 			if (html == null) return null;
 			
 			urls.addAll(Util.findAllLinkHref(html, task.site.getUrl()));
+			urls.addAll(new DefaultLinkFinder(html).getLinks());
+			urls.addAll(new IframeLinkFinder(html).getLinks());
+			urls.addAll(new FrameLinkFinder(html).getLinks());
 		}
 		
 		return urls;

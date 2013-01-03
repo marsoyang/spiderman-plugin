@@ -70,7 +70,7 @@ public class ModelParser{
 				if ("1".equals(isArray))
 					map.put(key, value);
 				else
-					map.put(key, new ArrayList<Object>(value).get(0));
+					map.put(key, new ArrayList<Object>(value).get(0).toString());
 				
 			} catch (XPatherException e) {
 				listener.onError(Thread.currentThread(), e.toString(), e);

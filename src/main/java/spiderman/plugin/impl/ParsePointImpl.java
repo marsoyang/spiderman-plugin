@@ -5,7 +5,6 @@ import java.util.Map;
 import org.eweb4j.spiderman.fetcher.Page;
 import org.eweb4j.spiderman.plugin.ParsePoint;
 import org.eweb4j.spiderman.spider.SpiderListener;
-import org.eweb4j.spiderman.xml.Model;
 import org.eweb4j.spiderman.xml.Target;
 
 import spiderman.plugin.util.ModelParser;
@@ -27,16 +26,8 @@ public class ParsePointImpl implements ParsePoint{
 	}
 
 	private Map<String,Object> parseTargetModelByXpathAndRegex() throws Exception {
-		Model model = target.getModel();
-		Class<?> modelClass = null;
-		if (model.getClazz() == null || model.getClazz().trim().length() == 0)
-			modelClass = Map.class;
-		else 
-			modelClass = Class.forName(model.getClazz());
-		
 		ModelParser parser = new ModelParser(target, listener);
 		Map<String, Object> map = parser.parse(page.getContent());
-		
 		return map;
 	}
 }

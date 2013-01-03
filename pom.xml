@@ -53,11 +53,22 @@
 			<artifactId>spiderman</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
-
+		<!--dependency>
+			<groupId>net.vidageek</groupId>
+			<artifactId>crawler</artifactId>
+			<version>1.0</version>
+		</dependency-->
 		<dependency>
 			<groupId>org.apache.httpcomponents</groupId>
 			<artifactId>httpclient</artifactId>
-			<version>4.2</version>
+			<version>4.1.2</version>
+			<scope>compile</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.httpcomponents</groupId>
+			<artifactId>httpcore</artifactId>
+			<version>4.1.4</version>
+			<scope>compile</scope>
 		</dependency>
 		<dependency>
 			<groupId>net.sourceforge.htmlcleaner</groupId>
