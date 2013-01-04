@@ -53,11 +53,13 @@
 			<artifactId>spiderman</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
-		<!--dependency>
-			<groupId>net.vidageek</groupId>
-			<artifactId>crawler</artifactId>
-			<version>1.0</version>
-		</dependency-->
+		<dependency>
+			<groupId>net.sf.saxon</groupId>
+			<artifactId>Saxon-HE</artifactId>
+			<version>9.4.0.6</version>
+		</dependency>
+		<!--dependency> <groupId>net.vidageek</groupId> <artifactId>crawler</artifactId> 
+			<version>1.0</version> </dependency -->
 		<dependency>
 			<groupId>org.apache.httpcomponents</groupId>
 			<artifactId>httpclient</artifactId>

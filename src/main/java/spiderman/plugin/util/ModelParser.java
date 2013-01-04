@@ -16,6 +16,8 @@ import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpression;
 import javax.xml.xpath.XPathFactory;
 
+import net.sf.saxon.xpath.XPathFactoryImpl;
+
 import org.eweb4j.spiderman.fetcher.Page;
 import org.eweb4j.spiderman.spider.SpiderListener;
 import org.eweb4j.spiderman.xml.Field;
@@ -45,23 +47,27 @@ public class ModelParser extends DefaultHandler{
 		File file = new File("d:\\xml.xml");
 		String xml = FileUtil.readFile(file);
 		
+//		System.setProperty("javax.xml.xpath.XPathFactory:"+NamespaceConstant.OBJECT_MODEL_SAXON, "net.sf.saxon.xpath.XPathFactoryImpl");
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         factory.setNamespaceAware(true); // never forget this!
         DocumentBuilder builder = factory.newDocumentBuilder();
         Document doc = builder.parse(new ByteArrayInputStream(xml.getBytes()));
-        XPathFactory xfactory = XPathFactory.newInstance();
+        XPathFactory xfactory = XPathFactoryImpl.newInstance();
         XPath xpath = xfactory.newXPath();
         XPathExpression expr = xpath.compile("//node");
         Object result = expr.evaluate(doc, XPathConstants.NODESET);
         NodeList nodes = (NodeList) result;
         int count = 0;
+        String regex = "\\w+\\.(gif|png|jpg|jpeg|bmp)";
         for (int i = 0; i < nodes.getLength(); i++) {
-            NodeList subs = (NodeList)xpath.compile("Title/text()").evaluate(nodes.item(i), XPathConstants.NODESET);
+            NodeList subs = (NodeList)xpath.compile("*[matches(text(),'"+regex+"')]/text()").evaluate(nodes.item(i), XPathConstants.NODESET);
             if (subs == null || subs.getLength() == 0)
             	continue;
             for (int j = 0; j < subs.getLength(); j++) {
             	Node item = subs.item(j);
-            	System.out.println(item.getNodeValue());
+            	String value = item.getNodeValue();
+            	List<String> imgs = CommonUtil.findByRegex(value, "[^\\s'=\"]+\\.(gif|png|jpg|jpeg|bmp)(?=[\"']?)");
+            	System.out.println(item.getParentNode().getNodeName()+"->"+imgs);
             	count++;
             }
         }
@@ -107,7 +113,7 @@ public class ModelParser extends DefaultHandler{
         factory.setNamespaceAware(true); // never forget this!
         DocumentBuilder builder = factory.newDocumentBuilder();
         Document doc = builder.parse(new ByteArrayInputStream(xml));
-        XPathFactory xfactory = XPathFactory.newInstance();
+        XPathFactory xfactory = XPathFactoryImpl.newInstance();
         XPath xpathParser = xfactory.newXPath();
         
         final List<Field> fields = target.getModel().getField();
@@ -231,10 +237,11 @@ public class ModelParser extends DefaultHandler{
 			Collection<String> inputs = new ArrayList<String>(value.size());
 			for (Object obj : value){
 				String input = String.valueOf(obj);
-				String val = CommonUtil.findOneByRegex(input, regex);
-				if (val != null)
-					input = val;
-				inputs.add(input);
+				List<String> vals = CommonUtil.findByRegex(input, regex);
+				if (vals != null)
+					inputs.addAll(vals);
+				else
+					inputs.add(input);
 			}
 			
 			if (!inputs.isEmpty()){
