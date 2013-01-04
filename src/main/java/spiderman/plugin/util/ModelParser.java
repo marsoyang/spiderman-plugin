@@ -33,6 +33,10 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.helpers.DefaultHandler;
 
+import com.greenpineyu.fel.FelEngine;
+import com.greenpineyu.fel.FelEngineImpl;
+import com.greenpineyu.fel.context.FelContext;
+
 public class ModelParser extends DefaultHandler{
 
 	private Target target = null;
@@ -46,32 +50,32 @@ public class ModelParser extends DefaultHandler{
 	public static void main(String[] args) throws Exception{
 		File file = new File("d:\\xml.xml");
 		String xml = FileUtil.readFile(file);
-		
+		 
 //		System.setProperty("javax.xml.xpath.XPathFactory:"+NamespaceConstant.OBJECT_MODEL_SAXON, "net.sf.saxon.xpath.XPathFactoryImpl");
-		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-        factory.setNamespaceAware(true); // never forget this!
-        DocumentBuilder builder = factory.newDocumentBuilder();
-        Document doc = builder.parse(new ByteArrayInputStream(xml.getBytes()));
-        XPathFactory xfactory = XPathFactoryImpl.newInstance();
-        XPath xpath = xfactory.newXPath();
-        XPathExpression expr = xpath.compile("//node");
-        Object result = expr.evaluate(doc, XPathConstants.NODESET);
-        NodeList nodes = (NodeList) result;
-        int count = 0;
-        String regex = "\\w+\\.(gif|png|jpg|jpeg|bmp)";
-        for (int i = 0; i < nodes.getLength(); i++) {
-            NodeList subs = (NodeList)xpath.compile("*[matches(text(),'"+regex+"')]/text()").evaluate(nodes.item(i), XPathConstants.NODESET);
-            if (subs == null || subs.getLength() == 0)
-            	continue;
-            for (int j = 0; j < subs.getLength(); j++) {
-            	Node item = subs.item(j);
-            	String value = item.getNodeValue();
-            	List<String> imgs = CommonUtil.findByRegex(value, "[^\\s'=\"]+\\.(gif|png|jpg|jpeg|bmp)(?=[\"']?)");
-            	System.out.println(item.getParentNode().getNodeName()+"->"+imgs);
-            	count++;
-            }
-        }
-        System.out.println("count->"+count);
+//		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+//        factory.setNamespaceAware(true); // never forget this!
+//        DocumentBuilder builder = factory.newDocumentBuilder();
+//        Document doc = builder.parse(new ByteArrayInputStream(xml.getBytes()));
+//        XPathFactory xfactory = XPathFactoryImpl.newInstance();
+//        XPath xpath = xfactory.newXPath();
+//        XPathExpression expr = xpath.compile("//node");
+//        Object result = expr.evaluate(doc, XPathConstants.NODESET);
+//        NodeList nodes = (NodeList) result;
+//        int count = 0;
+//        String regex = "\\w+\\.(gif|png|jpg|jpeg|bmp)";
+//        for (int i = 0; i < nodes.getLength(); i++) {
+//            NodeList subs = (NodeList)xpath.compile("*[matches(text(),'"+regex+"')]/text()").evaluate(nodes.item(i), XPathConstants.NODESET);
+//            if (subs == null || subs.getLength() == 0)
+//            	continue;
+//            for (int j = 0; j < subs.getLength(); j++) {
+//            	Node item = subs.item(j);
+//            	String value = item.getNodeValue();
+//            	List<String> imgs = CommonUtil.findByRegex(value, "[^\\s'=\"]+\\.(gif|png|jpg|jpeg|bmp)(?=[\"']?)");
+//            	System.out.println(item.getParentNode().getNodeName()+"->"+imgs);
+//            	count++;
+//            }
+//        }
+//        System.out.println("count->"+count);
 		
 //		//第一步：获得解析工厂的实例  
 //        SAXParserFactory spf = SAXParserFactory.newInstance();  
@@ -146,6 +150,7 @@ public class ModelParser extends DefaultHandler{
 				String attribute = field.getParser().getAttribute();
 				String regex = field.getParser().getRegex();
 				String isArray = field.getIsArray();
+				String el = field.getParser().getEl();
 				
 				XPathExpression expr = xpathParser.compile(xpath);
 		        Object result = expr.evaluate(item, XPathConstants.NODESET);
@@ -157,11 +162,6 @@ public class ModelParser extends DefaultHandler{
 				if (nodes.getLength() == 0)
 					continue;
 				
-//		        for (int i = 0; i < nodes.getLength(); i++) {
-//					Node node = nodes.item(i);
-//					listener.onInfo(Thread.currentThread(), key+"->"+node.getNodeValue());
-//				}
-		        
 				Collection<Object> value = new ArrayList<Object>();
 				if (attribute != null && attribute.trim().length() > 0){
 					for (int i = 0; i < nodes.getLength(); i++) {
@@ -177,6 +177,23 @@ public class ModelParser extends DefaultHandler{
 				}
 				
 				parseByRegex(regex, value);
+				
+				// 进行EL表达式的解析
+				if (el != null && el.trim().length() > 0){
+					List<Object> newValue = new ArrayList<Object>();
+					for (Object val : value){
+						FelEngine fel = new FelEngineImpl();   
+						FelContext ctx = fel.getContext();
+						ctx.set("$text", val);
+						Object newVal = fel.eval(el);
+						if (newVal == null)
+							newVal = val;
+						
+						newValue.add(newVal);
+					}
+					value.clear();
+					value.addAll(newValue);
+				}
 				
 				if ("1".equals(isArray))
 					map.put(key, value);
