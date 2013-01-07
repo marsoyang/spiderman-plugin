@@ -25,7 +25,7 @@ public class FetchPointImpl implements FetchPoint{
 		
 		SpiderConfig config = new SpiderConfig();
 		config.setCharset(task.site.getCharset());
-		return  new PageFetcher(config, new ArrayList<Cookie>()).fetchHeader(task.url);
+		return  new PageFetcher(config, new ArrayList<Cookie>()).fetch(task.url);
 		
 //		return fetch();
 	}

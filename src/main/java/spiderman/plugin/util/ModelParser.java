@@ -20,6 +20,7 @@ import net.sf.saxon.xpath.XPathFactoryImpl;
 
 import org.eweb4j.spiderman.fetcher.Page;
 import org.eweb4j.spiderman.spider.SpiderListener;
+import org.eweb4j.spiderman.task.Task;
 import org.eweb4j.spiderman.xml.Field;
 import org.eweb4j.spiderman.xml.Target;
 import org.eweb4j.util.CommonUtil;
@@ -43,15 +44,13 @@ import com.greenpineyu.fel.context.FelContext;
 import com.greenpineyu.fel.function.CommonFunction;
 import com.greenpineyu.fel.function.Function;
 
-//import com.greenpineyu.fel.FelEngine;
-//import com.greenpineyu.fel.FelEngineImpl;
-//import com.greenpineyu.fel.context.FelContext;
-
 public class ModelParser extends DefaultHandler{
 
+	private Task task = null;
 	private Target target = null;
 	private SpiderListener listener = null;
 	private static FelEngine fel = new FelEngineImpl();
+	
 	static {
         Function fun = new CommonFunction() {
 			public String getName() {
@@ -71,7 +70,8 @@ public class ModelParser extends DefaultHandler{
     	fel.addFun(fun);
 	}
 	public ModelParser(){}
-	public ModelParser(Target target, SpiderListener listener) {
+	public ModelParser(Task task, Target target, SpiderListener listener) {
+		this.task = task;
 		this.target = target;
 		this.listener = listener;
 	}
@@ -147,22 +147,15 @@ public class ModelParser extends DefaultHandler{
 	}
 	
 	public List<Map<String, Object>> parse(Page page) throws Exception{
-		listener.onInfo(Thread.currentThread(), "parse Page->[cType:" + page.getContentType()+",charset:"+page.getCharset()+",encoding:"+page.getEncoding()+",url->"+page.getUrl());
+		listener.onInfo(Thread.currentThread(), task, "parse Page->[cType:" + page.getContentType()+",charset:"+page.getCharset()+",encoding:"+page.getEncoding()+",url->"+page.getUrl());
 		String contentType = page.getContentType();
 		if (contentType == null)
 			contentType = "text/html";
 		boolean isXml = contentType.contains("text/xml") || contentType.contains("application/rss+xml") || contentType.contains("application/xml");
+		
 		//解析xml
-		if (isXml) {
-//			InputStream in = new ByteArrayInputStream(page.getContentData());
-//	        SAXParserFactory spf = SAXParserFactory.newInstance();  
-//	        SAXParser sp = spf.newSAXParser();
-//	        XmlParseHandler handler = new XmlParseHandler();
-//	        sp.parse(in, handler);
-//	        
-//	        return handler.getMap();
+		if (isXml) 
 			return parseXml(page);
-		}
 		
 		// TODO 解析 JSON
 		
@@ -262,7 +255,7 @@ public class ModelParser extends DefaultHandler{
 				else
 					map.put(key, new ArrayList<Object>(values).get(0));
 			} catch (Exception e) {
-				listener.onError(Thread.currentThread(), e.toString(), e);
+				listener.onError(Thread.currentThread(), task, e.toString(), e);
 				continue;
 			}
 		}
@@ -321,21 +314,20 @@ public class ModelParser extends DefaultHandler{
 					parseByRegex(regex, values);
 				}
 				
-				
-				
 				if ("1".equals(isArray))
 					map.put(key, values);
 				else
 					map.put(key, new ArrayList<Object>(values).get(0).toString());
 				
 			} catch (XPatherException e) {
-				listener.onError(Thread.currentThread(), e.toString(), e);
+				listener.onError(Thread.currentThread(), task, e.toString(), e);
 				continue;
 			}
 		}
 		
 		return map;
 	}
+	
 	private void parseByExp(String exp, Collection<Object> list) {
 		if (exp == null || exp.trim().length() == 0)
 			return ;

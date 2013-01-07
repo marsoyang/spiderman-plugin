@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans>
+	<site name="alldealsasia" url="http://www.alldealsasia.com/feeds/xml" enable="1" schedule="10m" charset="utf-8" thread="2" waitQueue="5s">
+		<queueRules policy="and">
+			<rule type="!regex" value="^.*\.(jpg|png|gif).*$" />
+		</queueRules>
+		<targets>
+			<target name="news">
+				<urls policy="and">
+					<rule type="equal" value="http://www.alldealsasia.com/feeds/xml" />
+				</urls>
+				<model isArray="1" xpath="//node">
+					<field name="title">
+						<parser xpath="Title/text()"/>
+					</field>
+					<field name="url">
+						<parser xpath="DealLink/text()" exp="$this.replace('affiliate//', '')"/>
+					</field>
+					<field name="images" isArray="1">
+						<parser xpath="*[matches(text(), '\w+\.(gif|png|jpg|jpeg|bmp)')]/text()" 
+								regex="[^\s'=&quot;]+\.(gif|png|jpg|jpeg|bmp)(?=[&quot;']?)"/>
+					</field>
+					<field name="category">
+						<parser xpath="Category/text()"/>
+					</field>
+					<field name="originalPrice">
+						<parser xpath="OriginalPrice/text()"/>
+					</field>
+					<field name="salePrice">
+						<parser xpath="SalePrice/text()"/>
+					</field>
+					<field name="discount">
+						<parser xpath="Discount/text()"/>
+					</field>
+					<field name="startTime">
+						<parser xpath="DealStartTime/text()"/>
+					</field>
+					<field name="endTime">
+						<parser xpath="DealEndTime/text()"/>
+					</field>
+					<field name="sold">
+						<parser xpath="AlreadySold/text()"/>
+					</field>
+					<field name="expiryDate">
+						<parser xpath="VoucherExpiryDate/text()"/>
+					</field>
+					<field name="merchantName">
+						<parser xpath="MerchantName/text()"/>
+					</field>
+					<field name="merchantAddress">
+						<parser xpath="MerchantAddress/text()"/>
+					</field>
+					<field name="merchantLatitude">
+						<parser xpath="MerchantLatitude/text()"/>
+					</field>
+					<field name="merchantLongitude">
+						<parser xpath="MerchantLongitude/text()"/>
+					</field>
+					<field name="description">
+						<parser xpath="Description" exp="$Attrs.xml($output($this)).rm('style').Tags().kp('p').ok()" />
+					</field>
+				</model>
+			</target>
+		</targets>
+		<plugins>
+			<plugin enable="1" name="spider_plugin" version="0.0.1" desc="这是一个官方实现的默认插件，实现了所有扩展点。">
+				<extensions>
+					<extension point="task_poll">
+						<impl type="" value="spiderman.plugin.impl.TaskPollPointImpl" sort="0"/>
+					</extension>
+					<extension point="begin">
+						<impl type="" value="spiderman.plugin.impl.BeginPointImpl" sort="0"/>
+					</extension>
+					<extension point="fetch">
+						<impl type="" value="spiderman.plugin.impl.FetchPointImpl" sort="0"/>
+					</extension>
+					<extension point="dig">
+						<impl type="" value="spiderman.plugin.impl.DigPointImpl" sort="0"/>
+					</extension>
+					<extension point="dup_removal">
+						<impl type="" value="spiderman.plugin.impl.DupRemovalPointImpl" sort="0"/>
+					</extension>
+					<extension point="task_sort">
+						<impl type="" value="spiderman.plugin.impl.TaskSortPointImpl" sort="0"/>
+					</extension>
+					<extension point="task_push">
+						<impl type="" value="spiderman.plugin.impl.TaskPushPointImpl" sort="0"/>
+					</extension>
+					<extension point="target">
+						<impl type="" value="spiderman.plugin.impl.TargetPointImpl" sort="0"/>
+					</extension>
+					<extension point="parse">
+						<impl type="" value="spiderman.plugin.impl.ParsePointImpl" sort="0"/>
+					</extension>
+					<extension point="end">
+						<impl type="" value="spiderman.plugin.impl.EndPointImpl" sort="0"/>
+					</extension>
+				</extensions>
+				<providers>
+					<provider>
+						<orgnization name="深圳优扣科技有限公司" website="" desc="致力于打造一流的社交分享购物社区!">
+							<author name="weiwei" website="http://laiweiweihi.iteye.com" email="l.weiwei@163.com" weibo="http://weibo.com/weiweimiss" desc="一个喜欢自由、音乐、绘画的IT老男孩" />
+						</orgnization>
+					</provider>
+				</providers>
+			</plugin>
+			
+			<plugin enable="0" name="hello_plugin" version="0.0.1" 
+				desc="这是一个样例插件，实现了begin扩展点。实现类有两个，其中一个使用了eweb4j的ioc容器来实例化。注意，任何插件都可以实现多个扩展点，实现相同扩展点的插件按照其实现类给定的sort排序从小到大进行顺序执行">
+				<extensions>
+					<!--extension point="begin">
+						<impl value="spiderman.plugin.Hello111" sort="1"/>
+						<impl type="ioc" value="hello222" sort="2"/>
+					</extension-->
+					<extension point="pojo">
+						<impl type="" value="spiderman.impl.PojoPointImpl" sort="0"/>
+					</extension>
+				</extensions>
+			</plugin>
+		</plugins>
+	</site>
+</beans>

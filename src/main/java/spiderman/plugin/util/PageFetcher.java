@@ -31,16 +31,12 @@ import org.apache.http.Header;
 import org.apache.http.HeaderElement;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpException;
-import org.apache.http.HttpHost;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpResponseInterceptor;
 import org.apache.http.HttpStatus;
 import org.apache.http.HttpVersion;
-import org.apache.http.auth.AuthScope;
-import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
-import org.apache.http.conn.params.ConnRoutePNames;
 import org.apache.http.conn.scheme.PlainSocketFactory;
 import org.apache.http.conn.scheme.Scheme;
 import org.apache.http.conn.scheme.SchemeRegistry;
@@ -61,49 +57,71 @@ import org.eweb4j.spiderman.fetcher.Page;
 import org.eweb4j.spiderman.fetcher.Status;
 
 /**
- * @author Yasser Ganjisaffar <lastname at gmail dot com>
+ * Web 页面内容获取器
+ * @author weiwei l.weiwei@163.com
+ * @date 2013-1-7 上午11:04:50
  */
 public class PageFetcher {
 
 	private ThreadSafeClientConnManager connectionManager;
-
 	private DefaultHttpClient httpClient;
-
 	private final Object mutex = new Object();
-
 	private long lastFetchTime = 0;
-	
 	private final SpiderConfig config;
-	
 	private final ConcurrentLinkedQueue<Cookie> cookies;
 	
+	/**
+	 * 处理GZIP解压缩
+	 * @author weiwei l.weiwei@163.com
+	 * @date 2013-1-7 上午11:26:24
+	 */
+	private static class GzipDecompressingEntity extends HttpEntityWrapper {
+		public GzipDecompressingEntity(final HttpEntity entity) {
+			super(entity);
+		}
+		public InputStream getContent() throws IOException, IllegalStateException {
+			InputStream wrappedin = wrappedEntity.getContent();
+			return new GZIPInputStream(wrappedin);
+		}
+		public long getContentLength() {
+			return -1;
+		}
+	}
+	
+	/**
+	 * 构造器，进行client的参数设置，包括Header、Cookie等
+	 * @param aconfig
+	 * @param cookies
+	 */
 	public PageFetcher(SpiderConfig aconfig, final List<Cookie> cookies) {
 		this.config = aconfig;
 		this.cookies = new ConcurrentLinkedQueue<Cookie>(cookies);
+		
+		//设置HTTP参数
 		HttpParams params = new BasicHttpParams();
+		params.setParameter(CoreProtocolPNames.USER_AGENT, config.getUserAgentString());
+		params.setIntParameter(CoreConnectionPNames.SO_TIMEOUT, config.getSocketTimeout());
+		params.setIntParameter(CoreConnectionPNames.CONNECTION_TIMEOUT, config.getConnectionTimeout());
+		
 		HttpProtocolParamBean paramsBean = new HttpProtocolParamBean(params);
 		paramsBean.setVersion(HttpVersion.HTTP_1_1);
 		paramsBean.setContentCharset("UTF-8");
 		paramsBean.setUseExpectContinue(false);
-
-		params.setParameter(CoreProtocolPNames.USER_AGENT, config.getUserAgentString());
-		params.setIntParameter(CoreConnectionPNames.SO_TIMEOUT, config.getSocketTimeout());
-		params.setIntParameter(CoreConnectionPNames.CONNECTION_TIMEOUT, config.getConnectionTimeout());
-
-//		params.setBooleanParameter("http.protocol.handle-redirects", true);
 		
 		SchemeRegistry schemeRegistry = new SchemeRegistry();
 		schemeRegistry.register(new Scheme("http", 80, PlainSocketFactory.getSocketFactory()));
 
-		if (config.isIncludeHttpsPages()) {
+		if (config.isIncludeHttpsPages()) 
 			schemeRegistry.register(new Scheme("https", 443, SSLSocketFactory.getSocketFactory()));
-		}
 
 		connectionManager = new ThreadSafeClientConnManager(schemeRegistry);
 		connectionManager.setMaxTotal(config.getMaxTotalConnections());
 		connectionManager.setDefaultMaxPerRoute(config.getMaxConnectionsPerHost());
+		
 		httpClient = new DefaultHttpClient(connectionManager, params);
-//		httpClient.getParams().setIntParameter("http.socket.timeout", 15000);
+		httpClient.getParams().setIntParameter("http.socket.timeout", 15000);
+		
+		//设置Cookie
 		for (Cookie cookie : cookies) {
 			String name = cookie.name();
 			String value = cookie.value();
@@ -112,29 +130,16 @@ public class PageFetcher {
 			clientCookie.setDomain(cookie.domain());
 			httpClient.getCookieStore().addCookie(clientCookie);
 		}
-		httpClient.getParams().setIntParameter("http.socket.timeout", 15000);
-		
-		if (config.getProxyHost() != null) {
 
-			if (config.getProxyUsername() != null) {
-				httpClient.getCredentialsProvider().setCredentials(
-						new AuthScope(config.getProxyHost(), config.getProxyPort()),
-						new UsernamePasswordCredentials(config.getProxyUsername(), config.getProxyPassword()));
-			}
-
-			HttpHost proxy = new HttpHost(config.getProxyHost(), config.getProxyPort());
-			httpClient.getParams().setParameter(ConnRoutePNames.DEFAULT_PROXY, proxy);
-        }
-
+		//设置响应拦截器
         httpClient.addResponseInterceptor(new HttpResponseInterceptor() {
-
-            public void process(final HttpResponse response, final HttpContext context) throws HttpException,
-                    IOException {
+            public void process(final HttpResponse response, final HttpContext context) throws HttpException, IOException {
                 HttpEntity entity = response.getEntity();
                 Header contentEncoding = entity.getContentEncoding();
                 if (contentEncoding != null) {
                     HeaderElement[] codecs = contentEncoding.getElements();
                     for (HeaderElement codec : codecs) {
+                    	//处理GZIP解压缩
                         if (codec.getName().equalsIgnoreCase("gzip")) {
                             response.setEntity(new GzipDecompressingEntity(response.getEntity()));
                             return;
@@ -144,108 +149,115 @@ public class PageFetcher {
             }
 
         });
-
 	}
 
-	public FetchResult fetchHeader(String webUrl) {
+	/**
+	 * 抓取目标url的内容
+	 * @date 2013-1-7 上午11:08:54
+	 * @param toFetchURL
+	 * @return
+	 */
+	public FetchResult fetch(String toFetchURL) throws Exception{
 		FetchResult fetchResult = new FetchResult();
-		String toFetchURL = webUrl;
 		HttpGet get = null;
 		HttpEntity entity = null;
 		try {
 			get = new HttpGet(toFetchURL);
+			//设置请求GZIP压缩，注意，前面必须设置GZIP解压缩处理
+			get.addHeader("Accept-Encoding", "gzip");
+			
+			//同步信号量,在真正对服务端进行访问之前进行访问间隔的控制
 			synchronized (mutex) {
+				//获取当前时间
 				long now = (new Date()).getTime();
-				if (now - lastFetchTime < config.getPolitenessDelay()) {
+				//对同一个Host抓取时间间隔进行控制，若在设置的时限内则进行休眠
+				if (now - lastFetchTime < config.getPolitenessDelay()) 
 					Thread.sleep(config.getPolitenessDelay() - (now - lastFetchTime));
-				}
+				//不断更新最后的抓取时间，注意，是针对HOST的，不是针对某个URL的
 				lastFetchTime = (new Date()).getTime();
 			}
-			get.addHeader("Accept-Encoding", "gzip");
+			
+			//执行get访问，获取服务端返回内容
 			HttpResponse response = httpClient.execute(get);
+			//设置已访问URL
+			fetchResult.setFetchedUrl(toFetchURL);
+			String uri = get.getURI().toString();
+			if (!uri.equals(toFetchURL)) 
+				if (!URLCanonicalizer.getCanonicalURL(uri).equals(toFetchURL)) 
+					fetchResult.setFetchedUrl(uri);
+			
 			entity = response.getEntity();
-
+			//服务端返回的状态码
 			int statusCode = response.getStatusLine().getStatusCode();
 			if (statusCode != HttpStatus.SC_OK) {
 				if (statusCode != HttpStatus.SC_NOT_FOUND) {
-					if (statusCode == HttpStatus.SC_MOVED_PERMANENTLY || statusCode == HttpStatus.SC_MOVED_TEMPORARILY) {
-						Header header = response.getFirstHeader("Location");
-						if (header != null) {
-							String movedToUrl = header.getValue();
-							movedToUrl = URLCanonicalizer.getCanonicalURL(movedToUrl, toFetchURL);
-							fetchResult.setMovedToUrl(movedToUrl);
-						} 
-						fetchResult.setStatusCode(statusCode);
-						return fetchResult;
-					}
+					Header locationHeader = response.getFirstHeader("Location");
+					//如果是301、302跳转，获取跳转URL即可返回
+					if (locationHeader != null && (statusCode == HttpStatus.SC_MOVED_PERMANENTLY || statusCode == HttpStatus.SC_MOVED_TEMPORARILY)) 
+						fetchResult.setMovedToUrl(URLCanonicalizer.getCanonicalURL(locationHeader.getValue(), toFetchURL));
 				}
-				fetchResult.setStatusCode(response.getStatusLine().getStatusCode());
+				//只要不是OK的除了设置跳转URL外设置statusCode即可返回
+				fetchResult.setStatusCode(statusCode);
 				return fetchResult;
 			}
 
-			fetchResult.setFetchedUrl(toFetchURL);
-			String uri = get.getURI().toString();
-			if (!uri.equals(toFetchURL)) {
-				if (!URLCanonicalizer.getCanonicalURL(uri).equals(toFetchURL)) {
-					fetchResult.setFetchedUrl(uri);
-				}
-			}
-
+			//处理服务端返回的实体内容
 			if (entity != null) {
 				fetchResult.setStatusCode(HttpStatus.SC_OK);
 				Page page = load(entity);
 				page.setUrl(fetchResult.getFetchedUrl());
 				fetchResult.setPage(page);
 				return fetchResult;
-			} else {
-				get.abort();
 			}
 		} catch (IOException e) {
 			fetchResult.setStatusCode(Status.INTERNAL_SERVER_ERROR.ordinal());
 			return fetchResult;
-		} catch (IllegalStateException e) {
-			// ignoring exceptions that occur because of not registering https
-			// and other schemes
 		} catch (Exception e) {
-			if (e.getMessage() == null) {
-			} else {
-			}
+			throw e;
 		} finally {
 			try {
-				if (entity == null && get != null) {
+				if (entity == null && get != null) 
 					get.abort();
-				}
 			} catch (Exception e) {
-				e.printStackTrace();
+				throw e;
 			}
 		}
+		
 		fetchResult.setStatusCode(Status.UNSPECIFIED_ERROR.ordinal());
 		return fetchResult;
 	}
 	
+	/**
+	 * 将Entity的内容载入Page对象
+	 * @date 2013-1-7 上午11:22:06
+	 * @param entity
+	 * @return
+	 * @throws Exception
+	 */
 	private Page load(HttpEntity entity) throws Exception {
 		Page page = new Page();
+		
+		//设置返回内容的ContentType
 		String contentType = null;
 		Header type = entity.getContentType();
-		if (type != null) {
+		if (type != null) 
 			contentType = type.getValue();
-		}
 		page.setContentType(contentType);
 		
+		//设置返回内容的字符编码
 		String contentEncoding = null;
 		Header encoding = entity.getContentEncoding();
-		if (encoding != null) {
+		if (encoding != null) 
 			contentEncoding = encoding.getValue();
-		}
 		page.setEncoding(contentEncoding);
 		
+		//设置返回内容的字符集
 		String contentCharset = EntityUtils.getContentCharSet(entity);
 		page.setCharset(contentCharset);
 		
-//		byte[] contentData = read(entity.getContent());
-//		page.setContentData(contentData);
+		//根据配置文件设置的字符集参数进行内容二进制话
 		String charset = config.getCharset();
-		String content = read(entity.getContent(), charset);
+		String content = this.read(entity.getContent(), charset);
 		page.setContent(content);
 		if (charset == null || charset.trim().length() == 0)
 			page.setContentData(content.getBytes());
@@ -255,6 +267,13 @@ public class PageFetcher {
 		return page;
 	}
 	
+	/**
+	 * 根据字符集从输入流里面读取String内容
+	 * @date 2013-1-7 上午11:25:04
+	 * @param inputStream
+	 * @param charset
+	 * @return
+	 */
 	private String read(final InputStream inputStream, String charset) {
 		StringBuilder sb = new StringBuilder();
 		BufferedReader reader = null;
@@ -274,6 +293,13 @@ public class PageFetcher {
 		return sb.toString();
 	}
 	
+	/**
+	 * 从输入流里读取二进制数据
+	 * @date 2013-1-7 上午11:25:38
+	 * @param inputStream
+	 * @return
+	 * @throws Exception
+	 */
 	private byte[] read(final InputStream inputStream) throws Exception {
 		byte[] bytes = new byte[1000];
 		int i = 0;
@@ -303,26 +329,17 @@ public class PageFetcher {
 		return httpClient;
 	}
 
-	private static class GzipDecompressingEntity extends HttpEntityWrapper {
+	/**
+	 * Proxy
+	 * if (config.getProxyHost() != null) {
+			if (config.getProxyUsername() != null) {
+				httpClient.getCredentialsProvider().setCredentials(
+						new AuthScope(config.getProxyHost(), config.getProxyPort()),
+						new UsernamePasswordCredentials(config.getProxyUsername(), config.getProxyPassword()));
+			}
 
-		public GzipDecompressingEntity(final HttpEntity entity) {
-			super(entity);
-		}
-
-		@Override
-		public InputStream getContent() throws IOException, IllegalStateException {
-
-			// the wrapped entity's getContent() decides about repeatability
-			InputStream wrappedin = wrappedEntity.getContent();
-
-			return new GZIPInputStream(wrappedin);
-		}
-
-		@Override
-		public long getContentLength() {
-			// length of ungzipped content is not known
-			return -1;
-		}
-
-	}
+			HttpHost proxy = new HttpHost(config.getProxyHost(), config.getProxyPort());
+			httpClient.getParams().setParameter(ConnRoutePNames.DEFAULT_PROXY, proxy);
+        }
+	 */
 }
