@@ -1,16 +1,18 @@
 package spiderman.plugin.impl;
 
-import java.util.ArrayList;
-
 import org.eweb4j.spiderman.fetcher.FetchResult;
 import org.eweb4j.spiderman.plugin.FetchPoint;
 import org.eweb4j.spiderman.spider.SpiderListener;
 import org.eweb4j.spiderman.task.Task;
 
-import spiderman.plugin.util.Cookie;
-import spiderman.plugin.util.PageFetcher;
+import spiderman.plugin.util.PageFetcherImpl;
 import spiderman.plugin.util.SpiderConfig;
 
+/**
+ * 一个Host一个FetchPointImpl对象
+ * @author weiwei l.weiwei@163.com
+ * @date 2013-1-7 下午06:40:05
+ */
 public class FetchPointImpl implements FetchPoint{
 
 	private SpiderListener listener = null;
@@ -22,11 +24,18 @@ public class FetchPointImpl implements FetchPoint{
 	}
 	
 	public FetchResult fetch(FetchResult result) throws Exception {
-		
-		SpiderConfig config = new SpiderConfig();
-		config.setCharset(task.site.getCharset());
-		return  new PageFetcher(config, new ArrayList<Cookie>()).fetch(task.url);
-		
+		synchronized (this.task) {
+			if (this.task.site.fetcher == null){
+				PageFetcherImpl fetcher = new PageFetcherImpl();
+				SpiderConfig config = new SpiderConfig();
+				config.setCharset(task.site.getCharset());
+				fetcher.setConfig(config);
+				
+				fetcher.init(this.task.site);
+				this.task.site.fetcher = fetcher;
+			}
+			return this.task.site.fetcher.fetch(task.url);
+		}
 //		return fetch();
 	}
 	

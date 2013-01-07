@@ -23,8 +23,10 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.Date;
-import java.util.List;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.Hashtable;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.zip.GZIPInputStream;
 
 import org.apache.http.Header;
@@ -37,6 +39,8 @@ import org.apache.http.HttpStatus;
 import org.apache.http.HttpVersion;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.params.ClientPNames;
+import org.apache.http.client.params.CookiePolicy;
 import org.apache.http.conn.scheme.PlainSocketFactory;
 import org.apache.http.conn.scheme.Scheme;
 import org.apache.http.conn.scheme.SchemeRegistry;
@@ -54,21 +58,23 @@ import org.apache.http.protocol.HttpContext;
 import org.apache.http.util.EntityUtils;
 import org.eweb4j.spiderman.fetcher.FetchResult;
 import org.eweb4j.spiderman.fetcher.Page;
+import org.eweb4j.spiderman.fetcher.PageFetcher;
 import org.eweb4j.spiderman.fetcher.Status;
+import org.eweb4j.spiderman.xml.Site;
 
 /**
  * Web 页面内容获取器
  * @author weiwei l.weiwei@163.com
  * @date 2013-1-7 上午11:04:50
  */
-public class PageFetcher {
+public class PageFetcherImpl implements PageFetcher{
 
 	private ThreadSafeClientConnManager connectionManager;
 	private DefaultHttpClient httpClient;
 	private final Object mutex = new Object();
 	private long lastFetchTime = 0;
-	private final SpiderConfig config;
-	private final ConcurrentLinkedQueue<Cookie> cookies;
+	private SpiderConfig config;
+	private Map<String, String> headers = new Hashtable<String, String>();
 	
 	/**
 	 * 处理GZIP解压缩
@@ -88,14 +94,37 @@ public class PageFetcher {
 		}
 	}
 	
+	public void setConfig(SpiderConfig config){
+		this.config = config;
+	}
+	
+	public void addCookie(String key, String val) {
+		Cookie c = new Cookie(key, val, "", "");
+		//设置Cookie
+		String name = c.name();
+		String value = c.value();
+		BasicClientCookie clientCookie = new BasicClientCookie(name, value);
+		clientCookie.setPath(c.path());
+		clientCookie.setDomain(c.domain());
+		httpClient.getCookieStore().addCookie(clientCookie);
+	}
+
+	public void addHeader(String key, String val) {
+		this.headers.put(key, val);
+	}
+
 	/**
 	 * 构造器，进行client的参数设置，包括Header、Cookie等
 	 * @param aconfig
 	 * @param cookies
 	 */
-	public PageFetcher(SpiderConfig aconfig, final List<Cookie> cookies) {
-		this.config = aconfig;
-		this.cookies = new ConcurrentLinkedQueue<Cookie>(cookies);
+	public void init(Site site) {
+		for (org.eweb4j.spiderman.xml.Header header : site.getHeaders().getHeader()){
+			this.addHeader(header.getName(), header.getValue());
+		}
+		for (org.eweb4j.spiderman.xml.Cookie cookie : site.getCookies().getCookie()){
+			this.addCookie(cookie.getName(), cookie.getValue());
+		}
 		
 		//设置HTTP参数
 		HttpParams params = new BasicHttpParams();
@@ -120,16 +149,7 @@ public class PageFetcher {
 		
 		httpClient = new DefaultHttpClient(connectionManager, params);
 		httpClient.getParams().setIntParameter("http.socket.timeout", 15000);
-		
-		//设置Cookie
-		for (Cookie cookie : cookies) {
-			String name = cookie.name();
-			String value = cookie.value();
-			BasicClientCookie clientCookie = new BasicClientCookie(name, value);
-			clientCookie.setPath(cookie.path());
-			clientCookie.setDomain(cookie.domain());
-			httpClient.getCookieStore().addCookie(clientCookie);
-		}
+		httpClient.getParams().setParameter(ClientPNames.COOKIE_POLICY, CookiePolicy.BEST_MATCH);
 
 		//设置响应拦截器
         httpClient.addResponseInterceptor(new HttpResponseInterceptor() {
@@ -147,7 +167,6 @@ public class PageFetcher {
                     }
                 }
             }
-
         });
 	}
 
@@ -165,6 +184,10 @@ public class PageFetcher {
 			get = new HttpGet(toFetchURL);
 			//设置请求GZIP压缩，注意，前面必须设置GZIP解压缩处理
 			get.addHeader("Accept-Encoding", "gzip");
+			for (Iterator<Entry<String, String>> it = headers.entrySet().iterator(); it.hasNext();){
+				Entry<String, String> entry = it.next();
+				get.setHeader(entry.getKey(), entry.getValue());
+			}
 			
 			//同步信号量,在真正对服务端进行访问之前进行访问间隔的控制
 			synchronized (mutex) {

@@ -45,11 +45,7 @@ public class SpiderConfig {
 	 */
 	private int maxPagesToFetch = -1;
 
-	/**
-	 * user-agent string that is used for representing your crawler to web
-	 * servers. See http://en.wikipedia.org/wiki/User_agent for more details
-	 */
-	private String userAgentString = "crawler4j (http://code.google.com/p/crawler4j/)";
+	private String userAgentString = "spiderman (https://github.com/laiweiwei/spiderman)";
 
 	/**
 	 * Politeness delay in milliseconds (delay between sending two requests to
