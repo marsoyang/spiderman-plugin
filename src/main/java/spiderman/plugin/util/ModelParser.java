@@ -4,6 +4,7 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -76,7 +77,13 @@ public class ModelParser extends DefaultHandler{
 		this.listener = listener;
 	}
 	
-	public static void main(String[] args) throws Exception{
+	public static void main(String[] args){
+		List<String> list = new ArrayList<String>(Arrays.asList("1", "2", "3"));
+		list.addAll(0, Arrays.asList("0"));
+		System.out.println(list);
+	}
+	
+	public static void mains(String[] args) throws Exception{
 		File file = new File("d:\\xml.xml");
 		String xml = FileUtil.readFile(file);
 //		System.setProperty("javax.xml.xpath.XPathFactory:"+NamespaceConstant.OBJECT_MODEL_SAXON, "net.sf.saxon.xpath.XPathFactoryImpl");
@@ -215,14 +222,19 @@ public class ModelParser extends DefaultHandler{
 				if (nodes.getLength() == 0)
 					continue;
 				
-				Collection<Object> values = new ArrayList<Object>();
+				List<Object> values = new ArrayList<Object>();
 				
 				if (attribute != null && attribute.trim().length() > 0){
 					for (int i = 0; i < nodes.getLength(); i++){
 						Node node = nodes.item(i);
 						Element e = (Element)node;
-						String attrVal = e.getAttribute(attribute);
-						values.add(attrVal);
+						String[] attrs = attribute.split("\\|");
+						for (String attr : attrs){
+							String attrVal = e.getAttribute(attr);
+							if (attr == null || attr.trim().length() == 0)
+								continue;
+							values.add(attrVal);
+						}
 					}
 					
 					//正则
@@ -250,10 +262,17 @@ public class ModelParser extends DefaultHandler{
 					parseByRegex(regex, values);
 				}
 				
-				if ("1".equals(isArray))
+				if ("1".equals(isArray)){
+					//如果字段key为数组且values不为空，继续沿用
+					if (map.containsKey(key)){
+						//将原来的值插入到前面
+						values.addAll(0, (Collection<?>) map.get(key));
+					}
+					
 					map.put(key, values);
-				else
+				} else {
 					map.put(key, new ArrayList<Object>(values).get(0));
+				}
 			} catch (Exception e) {
 				listener.onError(Thread.currentThread(), task, e.toString(), e);
 				continue;
@@ -282,13 +301,18 @@ public class ModelParser extends DefaultHandler{
 				if (nodeVals == null || nodeVals.length == 0)
 					continue;
 				
-				Collection<Object> values = new ArrayList<Object>();
+				List<Object> values = new ArrayList<Object>();
 				
 				if (attribute != null && attribute.trim().length() > 0){
 					for (Object nodeVal : nodeVals){
 						TagNode node = (TagNode)nodeVal;
-						String attrVal = node.getAttributeByName(attribute);
-						values.add(attrVal);
+						String[] attrs = attribute.split("\\|");
+						for (String attr : attrs){
+							String attrVal = node.getAttributeByName(attribute);
+							if (attr == null || attr.trim().length() == 0)
+								continue;
+							values.add(attrVal);
+						}
 					}
 					//正则
 					parseByRegex(regex, values);
@@ -314,10 +338,17 @@ public class ModelParser extends DefaultHandler{
 					parseByRegex(regex, values);
 				}
 				
-				if ("1".equals(isArray))
+				if ("1".equals(isArray)){
+					//如果字段key为数组且values不为空，继续沿用
+					if (map.containsKey(key)){
+						//将原来的值插入到前面
+						values.addAll(0, (Collection<?>) map.get(key));
+					}
+					
 					map.put(key, values);
-				else
+				}else{
 					map.put(key, new ArrayList<Object>(values).get(0).toString());
+				}
 				
 			} catch (XPatherException e) {
 				listener.onError(Thread.currentThread(), task, e.toString(), e);
@@ -358,9 +389,14 @@ public class ModelParser extends DefaultHandler{
 			String input = (String)obj;
 			List<String> vals = CommonUtil.findByRegex(input, regex);
 			if (vals == null)
-				newVals.add(obj);
-			else
-				newVals.addAll(vals);
+				continue;
+			else {
+				for (String val : vals){
+					if (val == null || val.trim().length() == 0)
+						continue;
+					newVals.add(val);
+				}
+			}
 		}
 		
 		if (!newVals.isEmpty()){

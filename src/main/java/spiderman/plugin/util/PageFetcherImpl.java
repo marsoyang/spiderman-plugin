@@ -76,6 +76,9 @@ public class PageFetcherImpl implements PageFetcher{
 	private SpiderConfig config;
 	private Map<String, String> headers = new Hashtable<String, String>();
 	
+	public PageFetcherImpl(){
+	}
+	
 	/**
 	 * 处理GZIP解压缩
 	 * @author weiwei l.weiwei@163.com
@@ -98,8 +101,8 @@ public class PageFetcherImpl implements PageFetcher{
 		this.config = config;
 	}
 	
-	public void addCookie(String key, String val) {
-		Cookie c = new Cookie(key, val, "", "");
+	public void addCookie(String key, String val, String host, String path) {
+		Cookie c = new Cookie(key, val, host, path);
 		//设置Cookie
 		String name = c.name();
 		String value = c.value();
@@ -123,7 +126,7 @@ public class PageFetcherImpl implements PageFetcher{
 			this.addHeader(header.getName(), header.getValue());
 		}
 		for (org.eweb4j.spiderman.xml.Cookie cookie : site.getCookies().getCookie()){
-			this.addCookie(cookie.getName(), cookie.getValue());
+			this.addCookie(cookie.getName(), cookie.getValue(), cookie.getHost(), cookie.getPath());
 		}
 		
 		//设置HTTP参数
