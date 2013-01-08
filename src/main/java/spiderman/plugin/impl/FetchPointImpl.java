@@ -4,6 +4,7 @@ import org.eweb4j.spiderman.fetcher.FetchResult;
 import org.eweb4j.spiderman.plugin.FetchPoint;
 import org.eweb4j.spiderman.spider.SpiderListener;
 import org.eweb4j.spiderman.task.Task;
+import org.eweb4j.util.CommonUtil;
 
 import spiderman.plugin.util.PageFetcherImpl;
 import spiderman.plugin.util.SpiderConfig;
@@ -29,6 +30,15 @@ public class FetchPointImpl implements FetchPoint{
 				PageFetcherImpl fetcher = new PageFetcherImpl();
 				SpiderConfig config = new SpiderConfig();
 				config.setCharset(task.site.getCharset());
+				String sdelay = task.site.getReqDelay();
+				if (sdelay == null || sdelay.trim().length() == 0)
+					sdelay = "200";
+				
+				int delay = CommonUtil.toSeconds(sdelay).intValue()*1000;
+				if (delay < 0)
+					delay = 200;
+				
+				config.setPolitenessDelay(delay);
 				fetcher.setConfig(config);
 				
 				fetcher.init(this.task.site);

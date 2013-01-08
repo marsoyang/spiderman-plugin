@@ -201,10 +201,6 @@ public class SpiderConfig {
 		return userAgentString;
 	}
 
-	/**
-	 * user-agent string that is used for representing your crawler to web
-	 * servers. See http://en.wikipedia.org/wiki/User_agent for more details
-	 */
 	public void setUserAgentString(String userAgentString) {
 		this.userAgentString = userAgentString;
 	}

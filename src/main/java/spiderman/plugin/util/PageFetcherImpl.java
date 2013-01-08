@@ -193,6 +193,7 @@ public class PageFetcherImpl implements PageFetcher{
 			}
 			
 			//同步信号量,在真正对服务端进行访问之前进行访问间隔的控制
+			// TODO 针对每个请求有一个delay的参数设置
 			synchronized (mutex) {
 				//获取当前时间
 				long now = (new Date()).getTime();
