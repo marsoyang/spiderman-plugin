@@ -32,7 +32,6 @@ import org.htmlcleaner.HtmlCleaner;
 import org.htmlcleaner.Serializer;
 import org.htmlcleaner.SimpleXmlSerializer;
 import org.htmlcleaner.TagNode;
-import org.htmlcleaner.XPatherException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -69,6 +68,12 @@ public class ModelParser extends DefaultHandler{
 		};
 		
     	fel.addFun(fun);
+    	
+    	Tags $Tags = Tags.me();
+    	Attrs $Attrs = Attrs.me();
+    	fel.getContext().set("$Tags", $Tags);
+    	fel.getContext().set("$Attrs", $Attrs);
+    	fel.getContext().set("$Util", CommonUtil.class);
 	}
 	public ModelParser(){}
 	public ModelParser(Task task, Target target, SpiderListener listener) {
@@ -205,14 +210,15 @@ public class ModelParser extends DefaultHandler{
 	private Map<String, Object> parse2Map(Object item, XPath xpathParser, final List<Field> fields) {
 		Map<String, Object> map = new HashMap<String, Object>();
 		for (Field field : fields){
+			String key = field.getName();
+			String xpath = field.getParser().getXpath();
+			String attribute = field.getParser().getAttribute();
+			String regex = field.getParser().getRegex();
+			String isArray = field.getIsArray();
+			String exp = field.getParser().getExp();
+			String index = field.getParser().getIndex();
+			String isTrim = field.getIsTrim();
 			try {
-				String key = field.getName();
-				String xpath = field.getParser().getXpath();
-				String attribute = field.getParser().getAttribute();
-				String regex = field.getParser().getRegex();
-				String isArray = field.getIsArray();
-				String exp = field.getParser().getExp();
-				
 				XPathExpression expr = xpathParser.compile(xpath);
 		        Object result = expr.evaluate(item, XPathConstants.NODESET);
 		        
@@ -261,6 +267,22 @@ public class ModelParser extends DefaultHandler{
 					//正则
 					parseByRegex(regex, values);
 				}
+				//如果给定了index索引值，说明要其中的一个值
+				if (index != null && index.trim().length() > 0){
+					Object cv = new ArrayList<Object>(values).get(Integer.parseInt(index));
+					values.clear();
+					values.add(cv);
+				}
+				
+				//如果设置了trim
+				if ("1".equals(isTrim) || "true".equals(isTrim)) {
+					List<String> results = new ArrayList<String>(values.size());
+					for (Object obj : values){
+						results.add(String.valueOf(obj).trim());
+					}
+					values.clear();
+					values.addAll(results);
+				}
 				
 				if ("1".equals(isArray)){
 					//如果字段key为数组且values不为空，继续沿用
@@ -274,7 +296,7 @@ public class ModelParser extends DefaultHandler{
 					map.put(key, new ArrayList<Object>(values).get(0));
 				}
 			} catch (Exception e) {
-				listener.onError(Thread.currentThread(), task, e.toString(), e);
+				listener.onError(Thread.currentThread(), task, "key->"+key +" parse failed cause->"+e.toString(), e);
 				continue;
 			}
 		}
@@ -289,14 +311,15 @@ public class ModelParser extends DefaultHandler{
 		TagNode rootNode = cleaner.clean(page.getContent());
 		
 		for (Field field : fields){
+			String key = field.getName();
+			String xpath = field.getParser().getXpath();
+			String attribute = field.getParser().getAttribute();
+			String regex = field.getParser().getRegex();
+			String isArray = field.getIsArray();
+			String exp = field.getParser().getExp();
+			String index = field.getParser().getIndex();
+			String isTrim = field.getIsTrim();
 			try {
-				String key = field.getName();
-				String xpath = field.getParser().getXpath();
-				String attribute = field.getParser().getAttribute();
-				String regex = field.getParser().getRegex();
-				String isArray = field.getIsArray();
-				String exp = field.getParser().getExp();
-				
 				Object[] nodeVals = rootNode.evaluateXPath(xpath);
 				if (nodeVals == null || nodeVals.length == 0)
 					continue;
@@ -338,6 +361,23 @@ public class ModelParser extends DefaultHandler{
 					parseByRegex(regex, values);
 				}
 				
+				//如果给定了index索引值，说明要其中的一个值
+				if (index != null && index.trim().length() > 0){
+					Object cv = new ArrayList<Object>(values).get(Integer.parseInt(index));
+					values.clear();
+					values.add(cv);
+				}
+				
+				//如果设置了trim
+				if ("1".equals(isTrim) || "true".equals(isTrim)) {
+					List<String> results = new ArrayList<String>(values.size());
+					for (Object obj : values){
+						results.add(String.valueOf(obj).trim());
+					}
+					values.clear();
+					values.addAll(results);
+				}
+				
 				if ("1".equals(isArray)){
 					//如果字段key为数组且values不为空，继续沿用
 					if (map.containsKey(key)){
@@ -350,8 +390,8 @@ public class ModelParser extends DefaultHandler{
 					map.put(key, new ArrayList<Object>(values).get(0).toString());
 				}
 				
-			} catch (XPatherException e) {
-				listener.onError(Thread.currentThread(), task, e.toString(), e);
+			} catch (Exception e) {
+				listener.onError(Thread.currentThread(), task, "field->"+key+" parse failed cause->"+e.toString(), e);
 				continue;
 			}
 		}
@@ -366,15 +406,16 @@ public class ModelParser extends DefaultHandler{
 		List<Object> newValue = new ArrayList<Object>();
 		for (Object val : list){
 			fel.getContext().set("$this", val);
-			Tags $Tags = Tags.me();
-        	Attrs $Attrs = Attrs.me();
-        	fel.getContext().set("$Tags", $Tags);
-        	fel.getContext().set("$Attrs", $Attrs);
-    		Object newVal = fel.eval(exp);
-			if (newVal == null)
-				newVal = val;
-			
-			newValue.add(newVal);
+			try {
+	    		Object newVal = fel.eval(exp);
+				if (newVal == null)
+					newVal = val;
+				
+				newValue.add(newVal);
+			} catch (Exception e){
+				listener.onError(Thread.currentThread(), task, "exp->"+exp+" eval failed", e);
+				newValue.add(val);
+			}
 		}
 		
 		list.clear();
