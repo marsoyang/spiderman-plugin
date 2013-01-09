@@ -15,7 +15,7 @@ public class TaskPushPointImpl implements TaskPushPoint{
 		Collection<Task> newTasks = new ArrayList<Task>();
 		for (Task task : validTasks){
 			try{
-				//如果不是同一个Host，跳�?
+				//如果不是同一个Host
 				if (!CommonUtil.isSameHost(task.site.getUrl(), task.url))
 					continue;
 				

@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -23,6 +24,7 @@ import org.eweb4j.spiderman.fetcher.Page;
 import org.eweb4j.spiderman.spider.SpiderListener;
 import org.eweb4j.spiderman.task.Task;
 import org.eweb4j.spiderman.xml.Field;
+import org.eweb4j.spiderman.xml.Parsers;
 import org.eweb4j.spiderman.xml.Target;
 import org.eweb4j.util.CommonUtil;
 import org.eweb4j.util.FileUtil;
@@ -49,37 +51,41 @@ public class ModelParser extends DefaultHandler{
 	private Task task = null;
 	private Target target = null;
 	private SpiderListener listener = null;
-	private static FelEngine fel = new FelEngineImpl();
+	private FelEngine fel = new FelEngineImpl();
 	
-	static {
-        Function fun = new CommonFunction() {
-			public String getName() {
-				return "$output";
-			}
+	private final static Function fun = new CommonFunction() {
+		public String getName() {
+			return "$output";
+		}
 
-			public Object call(Object[] arguments) {
-				Object node = arguments[0];
-				boolean keepHeader = false;
-				if (arguments.length > 2)
-					keepHeader = (Boolean) arguments[1];
-				
-				return ParserUtil.xml(node, keepHeader);
-			}
-		};
+		public Object call(Object[] arguments) {
+			Object node = arguments[0];
+			boolean keepHeader = false;
+			if (arguments.length > 2)
+				keepHeader = (Boolean) arguments[1];
+			
+			return ParserUtil.xml(node, keepHeader);
+		}
+	};
+	
+	private void init(Task task, Target target, SpiderListener listener){
+		this.task = task;
+		this.target = target;
+		this.listener = listener;
 		
     	fel.addFun(fun);
-    	
     	Tags $Tags = Tags.me();
     	Attrs $Attrs = Attrs.me();
     	fel.getContext().set("$Tags", $Tags);
     	fel.getContext().set("$Attrs", $Attrs);
     	fel.getContext().set("$Util", CommonUtil.class);
+		fel.getContext().set("$target", this.target);
+		fel.getContext().set("$listener", this.listener);
+		fel.getContext().set("$task_url", this.task.url);
 	}
-	public ModelParser(){}
+	
 	public ModelParser(Task task, Target target, SpiderListener listener) {
-		this.task = task;
-		this.target = target;
-		this.listener = listener;
+		init(task, target, listener);
 	}
 	
 	public static void main(String[] args){
@@ -101,7 +107,7 @@ public class ModelParser extends DefaultHandler{
         XPathExpression expr = xpath.compile("//node");
         Object result = expr.evaluate(doc, XPathConstants.NODESET);
         NodeList nodes = (NodeList) result;
-        
+        FelEngine fel = new FelEngineImpl();
 //        int count = 0;
 //        String regex = "\\w+\\.(gif|png|jpg|jpeg|bmp)";
         for (int i = 0; i < nodes.getLength(); i++) {
@@ -209,95 +215,135 @@ public class ModelParser extends DefaultHandler{
 	
 	private Map<String, Object> parse2Map(Object item, XPath xpathParser, final List<Field> fields) {
 		Map<String, Object> map = new HashMap<String, Object>();
+		fel.getContext().set("$fields", map);
 		for (Field field : fields){
 			String key = field.getName();
-			String xpath = field.getParser().getXpath();
-			String attribute = field.getParser().getAttribute();
-			String regex = field.getParser().getRegex();
 			String isArray = field.getIsArray();
-			String exp = field.getParser().getExp();
-			String index = field.getParser().getIndex();
 			String isTrim = field.getIsTrim();
-			try {
-				XPathExpression expr = xpathParser.compile(xpath);
-		        Object result = expr.evaluate(item, XPathConstants.NODESET);
-		        
-				if (result == null)
-					continue;
-				NodeList nodes = (NodeList) result;
-				if (nodes.getLength() == 0)
-					continue;
-				
-				List<Object> values = new ArrayList<Object>();
-				
-				if (attribute != null && attribute.trim().length() > 0){
-					for (int i = 0; i < nodes.getLength(); i++){
-						Node node = nodes.item(i);
-						Element e = (Element)node;
-						String[] attrs = attribute.split("\\|");
-						for (String attr : attrs){
-							String attrVal = e.getAttribute(attr);
-							if (attr == null || attr.trim().length() == 0)
-								continue;
-							values.add(attrVal);
+			
+			Parsers parsers = field.getParsers();
+			if (parsers == null)
+				continue;
+			
+			List<org.eweb4j.spiderman.xml.Parser> parserList = parsers.getParser();
+			if (parserList == null || parserList.isEmpty())
+				continue;
+			
+			//field最终解析出来的结果
+			List<Object> values = new ArrayList<Object>();
+			for (int i = 0; i < parserList.size(); i++) {
+				org.eweb4j.spiderman.xml.Parser parser = parserList.get(i);
+				String xpath = parser.getXpath();
+				String attribute = parser.getAttribute();
+				String exp = parser.getExp();
+				String regex = parser.getRegex();
+				try {
+					if (xpath != null && xpath.trim().length() > 0) {
+						
+						XPathExpression expr = xpathParser.compile(xpath);
+				        Object result = expr.evaluate(item, XPathConstants.NODESET);
+				        
+						if (result == null)
+							continue;
+						
+						NodeList nodes = (NodeList) result;
+						if (nodes.getLength() == 0)
+							continue;
+						
+						if (attribute != null && attribute.trim().length() > 0){
+							for (int j = 0; j < nodes.getLength(); j++){
+								Node node = nodes.item(j);
+								Element e = (Element)node;
+								String attrVal = e.getAttribute(attribute);
+								values.add(attrVal);
+							}
+							
+							//正则
+							parseByRegex(regex, values);
+							// EXP表达式
+							parseByExp(exp, values);
+						}else if (xpath.endsWith("/text()")){
+							for (int j = 0; j < nodes.getLength(); j++){
+								Node node = nodes.item(j);
+								values.add(node.getNodeValue());
+							}
+							//正则
+							parseByRegex(regex, values);
+							// EXP表达式
+							parseByExp(exp, values);
+						} else {
+							for (int j = 0; j < nodes.getLength(); j++){
+								Node node = nodes.item(i);
+								values.add(node);
+							}
+							// 此种方式获取到的Node节点大部分都不是字符串，因此先执行表达式后执行正则
+							// EXP表达式
+							parseByExp(exp, values);
+							//正则
+							parseByRegex(regex, values);
+						}
+					}else{
+						List<Object> newValues = new ArrayList<Object>(values.size());
+						for (Object obj : values){
+							newValues.add(obj.toString());
+						}
+						//正则
+						parseByRegex(regex, newValues);
+						// EXP表达式
+						parseByExp(exp, newValues);
+						
+						if (!newValues.isEmpty()) {
+							values.clear();
+							values.addAll(newValues);
 						}
 					}
-					
-					//正则
-					parseByRegex(regex, values);
-					// EXP表达式
-					parseByExp(exp, values);
-				}else if (xpath.endsWith("/text()")){
-					for (int i = 0; i < nodes.getLength(); i++){
-						Node node = nodes.item(i);
-						values.add(node.getNodeValue());
-					}
-					//正则
-					parseByRegex(regex, values);
-					// EXP表达式
-					parseByExp(exp, values);
-				} else {
-					for (int i = 0; i < nodes.getLength(); i++){
-						Node node = nodes.item(i);
-						values.add(node);
-					}
-					// 此种方式获取到的Node节点大部分都不是字符串，因此先执行表达式后执行正则
-					// EXP表达式
-					parseByExp(exp, values);
-					//正则
-					parseByRegex(regex, values);
+				} catch (Exception e) {
+					listener.onError(Thread.currentThread(), task, "key->"+key +" parse failed cause->"+e.toString(), e);
+					continue;
 				}
-				//如果给定了index索引值，说明要其中的一个值
-				if (index != null && index.trim().length() > 0){
-					Object cv = new ArrayList<Object>(values).get(Integer.parseInt(index));
-					values.clear();
-					values.add(cv);
+			}
+			
+			//如果设置了trim
+			if ("1".equals(isTrim) || "true".equals(isTrim)) {
+				List<String> results = new ArrayList<String>(values.size());
+				for (Object obj : values){
+					results.add(String.valueOf(obj).trim());
 				}
-				
-				//如果设置了trim
-				if ("1".equals(isTrim) || "true".equals(isTrim)) {
-					List<String> results = new ArrayList<String>(values.size());
-					for (Object obj : values){
-						results.add(String.valueOf(obj).trim());
-					}
-					values.clear();
-					values.addAll(results);
-				}
-				
-				if ("1".equals(isArray)){
-					//如果字段key为数组且values不为空，继续沿用
-					if (map.containsKey(key)){
-						//将原来的值插入到前面
-						values.addAll(0, (Collection<?>) map.get(key));
+				values.clear();
+				values.addAll(results);
+			}
+			
+			if (values.isEmpty()) 
+				values.add("");
+			
+			//数组的话，需要去除重复和空空元素
+			if (values.size() >= 2){
+				List<Object> noRepeatValues = new ArrayList<Object>();
+				for (Iterator<Object> it = values.iterator(); it.hasNext(); ){
+					Object obj = it.next();
+					if (noRepeatValues.contains(obj))
+						continue;
+					if (obj instanceof String) {
+						if (((String)obj) == null || ((String)obj).trim().length() == 0)
+							continue;
 					}
 					
-					map.put(key, values);
-				} else {
-					map.put(key, new ArrayList<Object>(values).get(0));
+					noRepeatValues.add(obj);
 				}
-			} catch (Exception e) {
-				listener.onError(Thread.currentThread(), task, "key->"+key +" parse failed cause->"+e.toString(), e);
-				continue;
+				values.clear();
+				values.addAll(noRepeatValues);
+			}
+			
+			if ("1".equals(isArray)){
+				//如果字段key为数组且values不为空，继续沿用
+				if (map.containsKey(key)){
+					//将原来的值插入到前面
+					values.addAll(0, (Collection<?>) map.get(key));
+				}
+				
+				map.put(key, values);
+			} else {
+				map.put(key, new ArrayList<Object>(values).get(0));
 			}
 		}
 		
@@ -306,94 +352,132 @@ public class ModelParser extends DefaultHandler{
 	
 	private Map<String, Object> parseHtml(Page page){
 		Map<String, Object> map = new HashMap<String, Object>();
+		fel.getContext().set("$fields", map);
 		final List<Field> fields = target.getModel().getField();
 		HtmlCleaner cleaner = new HtmlCleaner();
 		TagNode rootNode = cleaner.clean(page.getContent());
-		
 		for (Field field : fields){
 			String key = field.getName();
-			String xpath = field.getParser().getXpath();
-			String attribute = field.getParser().getAttribute();
-			String regex = field.getParser().getRegex();
 			String isArray = field.getIsArray();
-			String exp = field.getParser().getExp();
-			String index = field.getParser().getIndex();
 			String isTrim = field.getIsTrim();
-			try {
-				Object[] nodeVals = rootNode.evaluateXPath(xpath);
-				if (nodeVals == null || nodeVals.length == 0)
-					continue;
-				
-				List<Object> values = new ArrayList<Object>();
-				
-				if (attribute != null && attribute.trim().length() > 0){
-					for (Object nodeVal : nodeVals){
-						TagNode node = (TagNode)nodeVal;
-						String[] attrs = attribute.split("\\|");
-						for (String attr : attrs){
-							String attrVal = node.getAttributeByName(attribute);
-							if (attr == null || attr.trim().length() == 0)
-								continue;
-							values.add(attrVal);
+			Parsers parsers = field.getParsers();
+			if (parsers == null)
+				continue;
+			
+			List<org.eweb4j.spiderman.xml.Parser> parserList = parsers.getParser();
+			if (parserList == null || parserList.isEmpty())
+				continue;
+			
+			//field最终解析出来的结果
+			List<Object> values = new ArrayList<Object>();
+			for (int i = 0; i < parserList.size(); i++) {
+				org.eweb4j.spiderman.xml.Parser parser = parserList.get(i);
+				String xpath = parser.getXpath();
+				String attribute = parser.getAttribute();
+				String exp = parser.getExp();
+				String regex = parser.getRegex();
+				try {
+					if (xpath != null && xpath.trim().length() > 0) {
+						Object[] nodeVals = rootNode.evaluateXPath(xpath);
+						if (nodeVals == null || nodeVals.length == 0)
+							continue;
+						
+						if (attribute != null && attribute.trim().length() > 0){
+							for (Object nodeVal : nodeVals){
+								TagNode node = (TagNode)nodeVal;
+								String attrVal = node.getAttributeByName(attribute);
+								values.add(attrVal);
+							}
+							//正则
+							parseByRegex(regex, values);
+							// EXP表达式
+							parseByExp(exp, values);
+						}else if (xpath.endsWith("/text()")){
+							for (Object nodeVal : nodeVals){
+								values.add(nodeVal.toString());
+							}
+							//正则
+							parseByRegex(regex, values);
+							// EXP表达式
+							parseByExp(exp, values);
+						}else {
+							for (Object nodeVal : nodeVals){
+								TagNode node = (TagNode)nodeVal;
+								values.add(node);
+							}
+							// 此种方式获取到的Node节点大部分都不是字符串，因此先执行表达式后执行正则
+							// EXP表达式
+							parseByExp(exp, values);
+							//正则
+							parseByRegex(regex, values);
+						}
+					}else {
+						
+						//第一步获得的是一个List<String>对象，交给下面的步骤进行解析
+						List<Object> newValues = new ArrayList<Object>();
+						for (Object nodeVal : values){
+							newValues.add(nodeVal.toString());
+						}
+						//正则
+						parseByRegex(regex, newValues);
+						// EXP表达式
+						parseByExp(exp, newValues);
+						
+						if (!newValues.isEmpty()) {
+							values.clear();
+							values.addAll(newValues);
 						}
 					}
-					//正则
-					parseByRegex(regex, values);
-					// EXP表达式
-					parseByExp(exp, values);
-				}else if (xpath.endsWith("/text()")){
-					for (Object nodeVal : nodeVals){
-						values.add(nodeVal.toString());
-					}
-					//正则
-					parseByRegex(regex, values);
-					// EXP表达式
-					parseByExp(exp, values);
-				} else {
-					for (Object nodeVal : nodeVals){
-						TagNode node = (TagNode)nodeVal;
-						values.add(node);
-					}
-					// 此种方式获取到的Node节点大部分都不是字符串，因此先执行表达式后执行正则
-					// EXP表达式
-					parseByExp(exp, values);
-					//正则
-					parseByRegex(regex, values);
+				} catch (Exception e) {
+					listener.onError(Thread.currentThread(), task, "field->"+key+" parse failed cause->"+e.toString(), e);
+					continue;
 				}
-				
-				//如果给定了index索引值，说明要其中的一个值
-				if (index != null && index.trim().length() > 0){
-					Object cv = new ArrayList<Object>(values).get(Integer.parseInt(index));
-					values.clear();
-					values.add(cv);
+			}
+			
+			if (values.isEmpty()) 
+				values.add("");
+			
+			//如果设置了trim
+			if ("1".equals(isTrim) || "true".equals(isTrim)) {
+				List<String> results = new ArrayList<String>(values.size());
+				for (Object obj : values){
+					results.add(String.valueOf(obj).trim());
 				}
-				
-				//如果设置了trim
-				if ("1".equals(isTrim) || "true".equals(isTrim)) {
-					List<String> results = new ArrayList<String>(values.size());
-					for (Object obj : values){
-						results.add(String.valueOf(obj).trim());
-					}
-					values.clear();
-					values.addAll(results);
-				}
-				
-				if ("1".equals(isArray)){
-					//如果字段key为数组且values不为空，继续沿用
-					if (map.containsKey(key)){
-						//将原来的值插入到前面
-						values.addAll(0, (Collection<?>) map.get(key));
+				values.clear();
+				values.addAll(results);
+			}
+			
+			//数组的话，需要去除重复和空空元素
+			if (values.size() >= 2){
+				List<Object> noRepeatValues = new ArrayList<Object>();
+				for (Iterator<Object> it = values.iterator(); it.hasNext(); ){
+					Object obj = it.next();
+					if (noRepeatValues.contains(obj))
+						continue;
+					if (obj instanceof String) {
+						if (((String)obj) == null || ((String)obj).trim().length() == 0)
+							continue;
 					}
 					
-					map.put(key, values);
-				}else{
-					map.put(key, new ArrayList<Object>(values).get(0).toString());
+					noRepeatValues.add(obj);
+				}
+				values.clear();
+				values.addAll(noRepeatValues);
+			}
+			
+			//最终解析完成
+			if ("1".equals(isArray)){
+				//如果字段key为数组且values不为空，继续沿用
+				if (map.containsKey(key)){
+					//将原来的值插入到前面
+					values.addAll(0, (Collection<?>) map.get(key));
 				}
 				
-			} catch (Exception e) {
-				listener.onError(Thread.currentThread(), task, "field->"+key+" parse failed cause->"+e.toString(), e);
-				continue;
+				map.put(key, values);
+			}else{
+				map.put(key, values.get(0).toString());
 			}
+			
 		}
 		
 		return map;
@@ -402,24 +486,34 @@ public class ModelParser extends DefaultHandler{
 	private void parseByExp(String exp, Collection<Object> list) {
 		if (exp == null || exp.trim().length() == 0)
 			return ;
-			
+		
 		List<Object> newValue = new ArrayList<Object>();
-		for (Object val : list){
-			fel.getContext().set("$this", val);
+		if (list == null || list.isEmpty()){
 			try {
 	    		Object newVal = fel.eval(exp);
-				if (newVal == null)
-					newVal = val;
-				
-				newValue.add(newVal);
+				if (newVal != null)
+					newValue.add(newVal);
 			} catch (Exception e){
 				listener.onError(Thread.currentThread(), task, "exp->"+exp+" eval failed", e);
-				newValue.add(val);
+			}
+		} else {
+			for (Object val : list){
+				if (val != null)
+					fel.getContext().set("$this", val);
+				try {
+		    		Object newVal = fel.eval(exp);
+					if (newVal != null)
+						newValue.add(newVal);
+				} catch (Exception e){
+					listener.onError(Thread.currentThread(), task, "exp->"+exp+" eval failed", e);
+				}
 			}
 		}
 		
-		list.clear();
-		list.addAll(newValue);
+		if (!newValue.isEmpty()){
+			list.clear();
+			list.addAll(newValue);
+		}
 	}
 	
 	private void parseByRegex(String regex, Collection<Object> list) {
@@ -427,22 +521,25 @@ public class ModelParser extends DefaultHandler{
 			return ;
 		List<Object> newVals = new ArrayList<Object>(list.size());
 		for (Object obj : list) {
-			String input = (String)obj;
-			List<String> vals = CommonUtil.findByRegex(input, regex);
-			if (vals == null)
-				continue;
-			else {
+			try {
+				String input = (String)obj;
+				if (input == null || input.trim().length() == 0)
+					continue;
+				List<String> vals = CommonUtil.findByRegex(input, regex);
+				if (vals == null)
+					continue;
 				for (String val : vals){
 					if (val == null || val.trim().length() == 0)
 						continue;
 					newVals.add(val);
 				}
+			} catch (Exception e){
+				listener.onError(Thread.currentThread(), task, "regex->"+regex+" of "+obj+" parse failed", e);
+				newVals.add(null);
 			}
 		}
 		
-		if (!newVals.isEmpty()){
-			list.clear();
-			list.addAll(newVals);
-		}
+		list.clear();
+		list.addAll(newVals);
 	}
 }
