@@ -2,9 +2,8 @@ package spiderman.plugin.util;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
-import java.io.StringWriter;
+import java.net.URL;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -31,8 +30,6 @@ import org.eweb4j.util.FileUtil;
 import org.eweb4j.util.xml.Attrs;
 import org.eweb4j.util.xml.Tags;
 import org.htmlcleaner.HtmlCleaner;
-import org.htmlcleaner.Serializer;
-import org.htmlcleaner.SimpleXmlSerializer;
 import org.htmlcleaner.TagNode;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -42,7 +39,6 @@ import org.xml.sax.helpers.DefaultHandler;
 
 import com.greenpineyu.fel.FelEngine;
 import com.greenpineyu.fel.FelEngineImpl;
-import com.greenpineyu.fel.context.FelContext;
 import com.greenpineyu.fel.function.CommonFunction;
 import com.greenpineyu.fel.function.Function;
 
@@ -88,49 +84,43 @@ public class ModelParser extends DefaultHandler{
 		init(task, target, listener);
 	}
 	
-	public static void main(String[] args){
-		List<String> list = new ArrayList<String>(Arrays.asList("1", "2", "3"));
-		list.addAll(0, Arrays.asList("0"));
-		System.out.println(list);
-	}
-	
-	public static void mains(String[] args) throws Exception{
-		File file = new File("d:\\xml.xml");
-		String xml = FileUtil.readFile(file);
+	public static void main(String[] args) throws Exception{
+//		File file = new File("d:\\xml.xml");
+//		String xml = FileUtil.readFile(file);
 //		System.setProperty("javax.xml.xpath.XPathFactory:"+NamespaceConstant.OBJECT_MODEL_SAXON, "net.sf.saxon.xpath.XPathFactoryImpl");
-		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-        factory.setNamespaceAware(true); // never forget this!
-        DocumentBuilder builder = factory.newDocumentBuilder();
-        Document doc = builder.parse(new ByteArrayInputStream(xml.getBytes()));
-        XPathFactory xfactory = XPathFactoryImpl.newInstance();
-        XPath xpath = xfactory.newXPath();
-        XPathExpression expr = xpath.compile("//node");
-        Object result = expr.evaluate(doc, XPathConstants.NODESET);
-        NodeList nodes = (NodeList) result;
-        FelEngine fel = new FelEngineImpl();
+//		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+//        factory.setNamespaceAware(true); // never forget this!
+//        DocumentBuilder builder = factory.newDocumentBuilder();
+//        Document doc = builder.parse(new ByteArrayInputStream(xml.getBytes()));
+//        XPathFactory xfactory = XPathFactoryImpl.newInstance();
+//        XPath xpath = xfactory.newXPath();
+//        XPathExpression expr = xpath.compile("//node");
+//        Object result = expr.evaluate(doc, XPathConstants.NODESET);
+//        NodeList nodes = (NodeList) result;
+//        FelEngine fel = new FelEngineImpl();
 //        int count = 0;
 //        String regex = "\\w+\\.(gif|png|jpg|jpeg|bmp)";
-        for (int i = 0; i < nodes.getLength(); i++) {
-        	if (i > 0)
-        		break;
-            
-        	NodeList subs = (NodeList)xpath.compile("Description").evaluate(nodes.item(i), XPathConstants.NODESET);
-        	
-        	Node node = subs.item(0);
-        	FelContext ctx = fel.getContext();
-        	ctx.set("$this", node);
-        	Tags $Tags = Tags.me();
-        	Attrs $Attrs = Attrs.me();
-			ctx.set("$Tags", $Tags);
-			ctx.set("$Attrs", $Attrs);
-    		
-			System.out.println($Attrs.xml(ParserUtil.xml(node, false)).rm("style").Tags().kp("p").ok());
-    		
-    		System.out.println(fel.eval("$Attrs.xml($output($this)).rm('style').Tags().kp('p').ok()"));
+//        for (int i = 0; i < nodes.getLength(); i++) {
+//        	if (i > 0)
+//        		break;
+//            
+//        	NodeList subs = (NodeList)xpath.compile("Description").evaluate(nodes.item(i), XPathConstants.NODESET);
+//        	
+//        	Node node = subs.item(0);
+//        	FelContext ctx = fel.getContext();
+//        	ctx.set("$this", node);
+//        	Tags $Tags = Tags.me();
+//        	Attrs $Attrs = Attrs.me();
+//			ctx.set("$Tags", $Tags);
+//			ctx.set("$Attrs", $Attrs);
+//    		
+//			System.out.println($Attrs.xml(ParserUtil.xml(node, false)).rm("style").Tags().kp("p").ok());
+//    		
+//    		System.out.println(fel.eval("$Attrs.xml($output($this)).rm('style').Tags().kp('p').ok()"));
     		
 //    		Object newVal =  MVEL.eval("org.eweb4j.util.CommonUtil.toXml($this, false)", ctx);
 //    		System.out.println(newVal);
-        }
+//        }
 
 //        	
 //            NodeList subs = (NodeList)xpath.compile("*[matches(text(),'"+regex+"')]/text()").evaluate(nodes.item(i), XPathConstants.NODESET);
@@ -146,14 +136,13 @@ public class ModelParser extends DefaultHandler{
 //        }
 //        System.out.println("count->"+count);
         
-        String html = "<div id='desc'><p><a href='http://www.baidu.com'>click me</a></p></div>";
+//        String html = FileUtil.readFile(new File("d:/html.html"));
         HtmlCleaner cleaner = new HtmlCleaner();
-		TagNode tagNode = cleaner.clean(html);
-		Object[] nodeVals = tagNode.evaluateXPath("//p");
-		StringWriter sw = new StringWriter();  
-	    Serializer serializer = new SimpleXmlSerializer(cleaner.getProperties());  
-	    serializer.write((TagNode)nodeVals[0], sw, "UTF-8");
-//	    System.out.println(sw.getBuffer().toString());
+		TagNode tagNode = cleaner.clean(new URL("http://cheapcheap.sg/cheap_n_deals_detail-Deal-2390-Instead-of-Usual-4990-52-off-Tobi-Travel-Steamer-As-Seen-on-TV-deal_id-1062-catid-6.htm"));
+		Object[] nodeVals = tagNode.evaluateXPath("(//div[@class='items'])//h5/..//tr[4]/td[last()]");
+		String rs = ParserUtil.xml(nodeVals[0],false);
+		System.out.println(rs);
+		System.out.println(CommonUtil.findOneByRegex(rs, "((?<=(\\D{1,255}))\\d{6}(?=(\\D{1,255})))"));
 		
 //		//第一步：获得解析工厂的实例  
 //        SAXParserFactory spf = SAXParserFactory.newInstance();  
@@ -488,6 +477,9 @@ public class ModelParser extends DefaultHandler{
 					values.addAll(results);
 				}
 				
+				if (values.isEmpty()) 
+					values.add("");
+				
 				//最终解析完成
 				if ("1".equals(isArray)){
 					map.put(key, values);
@@ -513,18 +505,25 @@ public class ModelParser extends DefaultHandler{
 				if (newVal != null)
 					newValue.add(newVal);
 			} catch (Exception e){
-				listener.onError(Thread.currentThread(), task, "exp->"+exp+" eval failed", e);
+//				listener.onError(Thread.currentThread(), task, "exp->"+exp+" eval failed", e);
 			}
 		} else {
 			for (Object val : list){
-				if (val != null)
-					fel.getContext().set("$this", val);
+				boolean isValBlank = false;
+				if (val != null){
+					if (val instanceof String && ((String)val).trim().length() == 0){
+						isValBlank = true;
+					}else {
+						fel.getContext().set("$this", val);
+					}
+				}
 				try {
 		    		Object newVal = fel.eval(exp);
 					if (newVal != null)
 						newValue.add(newVal);
 				} catch (Exception e){
-					listener.onError(Thread.currentThread(), task, "exp->"+exp+" eval failed", e);
+					if (!isValBlank)
+						listener.onError(Thread.currentThread(), task, "exp->"+exp+" eval failed", e);
 				}
 			}
 		}
