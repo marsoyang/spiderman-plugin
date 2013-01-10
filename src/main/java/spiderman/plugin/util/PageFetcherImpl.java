@@ -236,11 +236,9 @@ public class PageFetcherImpl implements PageFetcher{
 				fetchResult.setPage(page);
 				return fetchResult;
 			}
-		} catch (IOException e) {
+		} catch (Throwable e) {
 			fetchResult.setStatusCode(Status.INTERNAL_SERVER_ERROR.ordinal());
 			return fetchResult;
-		} catch (Exception e) {
-			throw e;
 		} finally {
 			try {
 				if (entity == null && get != null) 

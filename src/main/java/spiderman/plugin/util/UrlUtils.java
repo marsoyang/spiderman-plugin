@@ -1,18 +1,21 @@
 package spiderman.plugin.util;
 
-public final class UrlResolver {
+/**
+ * Code copied from HtmlUnit
+ * (src/main/java/com/gargoylesoftware/htmlunit/util/UrlUtils.java)
+ * (https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/trunk/htmlunit -
+ * commit 5556)
+ * 
+ * Modifications made by jonasabreu (jonas at vidageek dot net)
+ */
+public final class UrlUtils {
 
-	/**
-	 * Resolves a given relative URL against a base URL. See <a
-	 * href="http://www.faqs.org/rfcs/rfc1808.html">RFC1808</a> Section 4 for
-	 * more details.
-	 * 
-	 * @param baseUrl
-	 *            The base URL in which to resolve the specification.
-	 * @param relativeUrl
-	 *            The relative URL to resolve against the base URL.
-	 * @return the resolved specification.
-	 */
+	public static void main(String[] args) {
+		String baseUrl = "http://cheapcheap.sg/xom/";
+		String url = "cheap_n_deals_detail-Deal-20-for-Gelish-Manicure-+-Soak-Off-at-Specialist-Nail--Beauty-spa-@-Orchard--deal_id-1102-catid-5.htm";
+		System.out.println(resolveUrl(baseUrl, url));
+	}
+	
 	public static String resolveUrl(final String baseUrl, final String relativeUrl) {
 		if (baseUrl == null) {
 			throw new IllegalArgumentException("Base URL must not be null");
@@ -25,50 +28,6 @@ public final class UrlResolver {
 		return url.toString();
 	}
 
-	/**
-	 * Returns the index within the specified string of the first occurrence of
-	 * the specified search character.
-	 * 
-	 * @param s
-	 *            the string to search
-	 * @param searchChar
-	 *            the character to search for
-	 * @param beginIndex
-	 *            the index at which to start the search
-	 * @param endIndex
-	 *            the index at which to stop the search
-	 * @return the index of the first occurrence of the character in the string
-	 *         or <tt>-1</tt>
-	 */
-	private static int indexOf(final String s, final char searchChar,
-			final int beginIndex, final int endIndex) {
-		for (int i = beginIndex; i < endIndex; i++) {
-			if (s.charAt(i) == searchChar) {
-				return i;
-			}
-		}
-		return -1;
-	}
-
-	/**
-	 * Parses a given specification using the algorithm depicted in <a
-	 * href="http://www.faqs.org/rfcs/rfc1808.html">RFC1808</a>:
-	 * 
-	 * Section 2.4: Parsing a URL
-	 * 
-	 * An accepted method for parsing URLs is useful to clarify the generic-RL
-	 * syntax of Section 2.2 and to describe the algorithm for resolving
-	 * relative URLs presented in Section 4. This section describes the parsing
-	 * rules for breaking down a URL (relative or absolute) into the component
-	 * parts described in Section 2.1. The rules assume that the URL has already
-	 * been separated from any surrounding text and copied to a "parse string".
-	 * The rules are listed in the order in which they would be applied by the
-	 * parser.
-	 * 
-	 * @param spec
-	 *            The specification to parse.
-	 * @return the parsed specification.
-	 */
 	private static Url parseUrl(final String spec) {
 		final Url url = new Url();
 		int startIndex = 0;
@@ -201,8 +160,7 @@ public final class UrlResolver {
 		}
 		// Set the network location/login (<net_loc>) of the URL.
 		if ((locationStartIndex >= 0) && (locationEndIndex >= 0)) {
-			url.location_ = spec
-					.substring(locationStartIndex, locationEndIndex);
+			url.location_ = spec.substring(locationStartIndex, locationEndIndex);
 		}
 		return url;
 	}
@@ -221,33 +179,13 @@ public final class UrlResolver {
 		}
 		for (int i = 1; i < length; i++) {
 			c = scheme.charAt(i);
-			if (!Character.isLetterOrDigit(c) && c != '.' && c != '+'
-					&& c != '-') {
+			if (!Character.isLetterOrDigit(c) && (c != '.') && (c != '+') && (c != '-')) {
 				return false;
 			}
 		}
 		return true;
 	}
 
-	/**
-	 * Resolves a given relative URL against a base URL using the algorithm
-	 * depicted in <a href="http://www.faqs.org/rfcs/rfc1808.html">RFC1808</a>:
-	 * 
-	 * Section 4: Resolving Relative URLs
-	 * 
-	 * This section describes an example algorithm for resolving URLs within a
-	 * context in which the URLs may be relative, such that the result is always
-	 * a URL in absolute form. Although this algorithm cannot guarantee that the
-	 * resulting URL will equal that intended by the original author, it does
-	 * guarantee that any valid URL (relative or absolute) can be consistently
-	 * transformed to an absolute form given a valid base URL.
-	 * 
-	 * @param baseUrl
-	 *            The base URL in which to resolve the specification.
-	 * @param relativeUrl
-	 *            The relative URL to resolve against the base URL.
-	 * @return the resolved specification.
-	 */
 	private static Url resolveUrl(final Url baseUrl, final String relativeUrl) {
 		final Url url = parseUrl(relativeUrl);
 		// Step 1: The base URL is established according to the rules of
@@ -282,8 +220,7 @@ public final class UrlResolver {
 		url.location_ = baseUrl.location_;
 		// Step 4: If the embedded URL path is preceded by a slash "/", the
 		// path is not relative and we skip to Step 7.
-		if ((url.path_ != null)
-				&& ((url.path_.length() > 0) && ('/' == url.path_.charAt(0)))) {
+		if ((url.path_ != null) && url.path_.startsWith("/")) {
 			url.path_ = removeLeadingSlashPoints(url.path_);
 			return url;
 		}
@@ -314,7 +251,7 @@ public final class UrlResolver {
 		// appended in its place. The following operations are
 		// then applied, in order, to the new path:
 		final String basePath = baseUrl.path_;
-		String path = "";
+		String path = new String();
 
 		if (basePath != null) {
 			final int lastSlashIndex = basePath.lastIndexOf('/');
@@ -331,8 +268,7 @@ public final class UrlResolver {
 		int pathSegmentIndex;
 
 		while ((pathSegmentIndex = path.indexOf("/./")) >= 0) {
-			path = path.substring(0, pathSegmentIndex + 1).concat(
-					path.substring(pathSegmentIndex + 3));
+			path = path.substring(0, pathSegmentIndex + 1).concat(path.substring(pathSegmentIndex + 3));
 		}
 		// b) If the path ends with "." as a complete path segment,
 		// that "." is removed.
@@ -351,9 +287,8 @@ public final class UrlResolver {
 			if (slashIndex < 0) {
 				continue;
 			}
-			if (!"..".equals(pathSegment.substring(slashIndex))) {
-				path = path.substring(0, slashIndex + 1).concat(
-						path.substring(pathSegmentIndex + 4));
+			if (!pathSegment.substring(slashIndex).equals("..")) {
+				path = path.substring(0, slashIndex + 1).concat(path.substring(pathSegmentIndex + 4));
 			}
 		}
 		// d) If the path ends with "<segment>/..", where <segment> is a
@@ -377,9 +312,6 @@ public final class UrlResolver {
 		return url;
 	}
 
-	/**
-	 * "/.." at the beginning should be removed as browsers do (not in RFC)
-	 */
 	private static String removeLeadingSlashPoints(String path) {
 		while (path.startsWith("/..")) {
 			path = path.substring(3);
@@ -389,10 +321,39 @@ public final class UrlResolver {
 	}
 
 	/**
-	 * Class <tt>Url</tt> represents a Uniform Resource Locator.
-	 * 
-	 * @author Martin Tamme
+	 * Code copied from HtmlUnit
+	 * (src/main/java/com/gargoylesoftware/htmlunit/TextUtil.java)
+	 * (https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/trunk/htmlunit -
+	 * commit 5556)
 	 */
+	public static boolean startsWithIgnoreCase(final String stringToCheck, final String prefix) {
+
+		if (prefix.length() == 0) {
+			throw new IllegalArgumentException("Prefix may not be empty");
+		}
+
+		final int prefixLength = prefix.length();
+		if (stringToCheck.length() < prefixLength) {
+			return false;
+		}
+		return stringToCheck.substring(0, prefixLength).toLowerCase().equals(prefix.toLowerCase());
+	}
+
+	/**
+	 * Code copied from HtmlUnit
+	 * (src/main/java/com/gargoylesoftware/htmlunit/StringUtils.java)
+	 * (https://htmlunit.svn.sourceforge.net/svnroot/htmlunit/trunk/htmlunit -
+	 * commit 5556)
+	 */
+	public static int indexOf(final String s, final char searchChar, final int beginIndex, final int endIndex) {
+		for (int i = beginIndex; i < endIndex; i++) {
+			if (s.charAt(i) == searchChar) {
+				return i;
+			}
+		}
+		return -1;
+	}
+
 	private static class Url {
 
 		private String scheme_;
@@ -402,18 +363,6 @@ public final class UrlResolver {
 		private String query_;
 		private String fragment_;
 
-		/**
-		 * Creates a <tt>Url</tt> object.
-		 */
-		public Url() {
-		}
-
-		/**
-		 * Creates a <tt>Url</tt> object from the specified <tt>Url</tt> object.
-		 * 
-		 * @param url
-		 *            a <tt>Url</tt> object.
-		 */
 		public Url(final Url url) {
 			scheme_ = url.scheme_;
 			location_ = url.location_;
@@ -423,11 +372,9 @@ public final class UrlResolver {
 			fragment_ = url.fragment_;
 		}
 
-		/**
-		 * Returns a string representation of the <tt>Url</tt> object.
-		 * 
-		 * @return a string representation of the <tt>Url</tt> object.
-		 */
+		public Url() {
+		}
+
 		@Override
 		public String toString() {
 			final StringBuilder sb = new StringBuilder();
@@ -458,4 +405,5 @@ public final class UrlResolver {
 			return sb.toString();
 		}
 	}
+
 }

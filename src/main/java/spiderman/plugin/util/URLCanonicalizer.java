@@ -1,8 +1,6 @@
 package spiderman.plugin.util;
 
-import java.net.MalformedURLException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
@@ -89,11 +87,9 @@ public class URLCanonicalizer {
 			URL result = new URL(protocol, host, port, pathAndQueryString);
 			return result.toExternalForm();
 
-		} catch (MalformedURLException ex) {
-			return null;
-		} catch (URISyntaxException ex) {
-			return null;
-		}
+		} catch (Exception ex) {
+		} 
+		return href;
 	}
 
 	/**

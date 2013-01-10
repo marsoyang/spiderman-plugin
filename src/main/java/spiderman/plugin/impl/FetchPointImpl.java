@@ -25,7 +25,7 @@ public class FetchPointImpl implements FetchPoint{
 	}
 	
 	public FetchResult fetch(FetchResult result) throws Exception {
-		synchronized (this.task) {
+		synchronized (this.task.site) {
 			if (this.task.site.fetcher == null){
 				PageFetcherImpl fetcher = new PageFetcherImpl();
 				SpiderConfig config = new SpiderConfig();
@@ -44,7 +44,8 @@ public class FetchPointImpl implements FetchPoint{
 				fetcher.init(this.task.site);
 				this.task.site.fetcher = fetcher;
 			}
-			return this.task.site.fetcher.fetch(task.url);
+			FetchResult fr = this.task.site.fetcher.fetch(task.url.replace(" ", "%20"));
+			return fr;
 		}
 //		return fetch();
 	}

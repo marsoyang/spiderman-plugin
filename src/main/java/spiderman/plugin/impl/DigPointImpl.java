@@ -1,7 +1,10 @@
 package spiderman.plugin.impl;
 
+import java.net.URL;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 
 import org.eweb4j.spiderman.fetcher.FetchResult;
 import org.eweb4j.spiderman.infra.DefaultLinkFinder;
@@ -11,6 +14,9 @@ import org.eweb4j.spiderman.plugin.DigPoint;
 import org.eweb4j.spiderman.spider.SpiderListener;
 import org.eweb4j.spiderman.task.Task;
 
+import spiderman.plugin.util.DefaultLinkNormalizer;
+import spiderman.plugin.util.LinkNormalizer;
+import spiderman.plugin.util.URLCanonicalizer;
 import spiderman.plugin.util.Util;
 
 public class DigPointImpl implements DigPoint{
@@ -48,7 +54,18 @@ public class DigPointImpl implements DigPoint{
 			urls.addAll(new FrameLinkFinder(html).getLinks());
 		}
 		
-		return urls;
+		//resolveUrl
+		String hostUrl = new StringBuilder("http://").append(new URL(task.site.getUrl()).getHost()).append("/").toString();
+		List<String> newUrls = new ArrayList<String>(urls.size());
+		for (String url : urls) {
+			LinkNormalizer ln = new DefaultLinkNormalizer(hostUrl);
+			String newUrl = URLCanonicalizer.getCanonicalURL(ln.normalize(url));
+			if (newUrl.startsWith("mailto:"))
+				continue;
+			newUrls.add(newUrl);
+		}
+		
+		return newUrls;
 	}
 	
 }

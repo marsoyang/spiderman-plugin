@@ -33,8 +33,9 @@ public class Util {
 			if (href == null || href.trim().length() == 0)
 				continue;
 			
-			if (!href.startsWith("http://"))
-				href = new StringBuilder("http://").append(new URL(hostUrl).getHost()).append(href).toString();
+			if (!href.startsWith("https://") && !href.startsWith("http://")){
+				href = new StringBuilder("http://").append(new URL(hostUrl).getHost()).append("/").append(href).toString();
+			}
 			
 			href = URLCanonicalizer.getCanonicalURL(href);
 			if (href == null)
