@@ -303,47 +303,58 @@ public class ModelParser extends DefaultHandler{
 				}
 			}
 			
-			//如果设置了trim
-			if ("1".equals(isTrim) || "true".equals(isTrim)) {
-				List<String> results = new ArrayList<String>(values.size());
-				for (Object obj : values){
-					results.add(String.valueOf(obj).trim());
-				}
-				values.clear();
-				values.addAll(results);
-			}
-			
-			if (values.isEmpty()) 
-				values.add("");
-			
-			//数组的话，需要去除重复和空空元素
-			if (values.size() >= 2){
-				List<Object> noRepeatValues = new ArrayList<Object>();
-				for (Iterator<Object> it = values.iterator(); it.hasNext(); ){
-					Object obj = it.next();
-					if (noRepeatValues.contains(obj))
-						continue;
-					if (obj instanceof String) {
-						if (((String)obj) == null || ((String)obj).trim().length() == 0)
-							continue;
-					}
-					
-					noRepeatValues.add(obj);
-				}
-				values.clear();
-				values.addAll(noRepeatValues);
-			}
-			
-			if ("1".equals(isArray)){
-				//如果字段key为数组且values不为空，继续沿用
+			try {
+				if (values.isEmpty()) 
+					values.add("");
+				
+				// 相同 key，若values不为空，继续沿用
 				if (map.containsKey(key)){
 					//将原来的值插入到前面
-					values.addAll(0, (Collection<?>) map.get(key));
+					Object obj = map.get(key);
+					if (obj instanceof Collection) {
+						values.addAll(0, (Collection<?>) obj);
+					} else {
+						values.add(0, obj);
+					}
 				}
 				
-				map.put(key, values);
-			} else {
-				map.put(key, new ArrayList<Object>(values).get(0));
+				//数组的话，需要去除重复和空空元素
+				if (values.size() >= 2){
+					List<Object> noRepeatValues = new ArrayList<Object>();
+					for (Iterator<Object> it = values.iterator(); it.hasNext(); ){
+						Object obj = it.next();
+						if (noRepeatValues.contains(obj))
+							continue;
+						if (obj instanceof String) {
+							if (((String)obj) == null || ((String)obj).trim().length() == 0)
+								continue;
+						}
+						
+						noRepeatValues.add(obj);
+					}
+					values.clear();
+					values.addAll(noRepeatValues);
+				}
+				
+				//如果设置了trim
+				if ("1".equals(isTrim) || "true".equals(isTrim)) {
+					List<String> results = new ArrayList<String>(values.size());
+					for (Object obj : values){
+						results.add(String.valueOf(obj).trim());
+					}
+					values.clear();
+					values.addAll(results);
+				}
+				
+				//最终完成
+				if ("1".equals(isArray)){
+					map.put(key, values);
+				} else {
+					map.put(key, new ArrayList<Object>(values).get(0));
+				}
+				
+			} catch (Exception e) {
+				listener.onError(Thread.currentThread(), task, "field->"+key+" parse failed cause->"+e.toString(), e);
 			}
 		}
 		
@@ -434,50 +445,58 @@ public class ModelParser extends DefaultHandler{
 				}
 			}
 			
-			if (values.isEmpty()) 
-				values.add("");
-			
-			//如果设置了trim
-			if ("1".equals(isTrim) || "true".equals(isTrim)) {
-				List<String> results = new ArrayList<String>(values.size());
-				for (Object obj : values){
-					results.add(String.valueOf(obj).trim());
-				}
-				values.clear();
-				values.addAll(results);
-			}
-			
-			//数组的话，需要去除重复和空空元素
-			if (values.size() >= 2){
-				List<Object> noRepeatValues = new ArrayList<Object>();
-				for (Iterator<Object> it = values.iterator(); it.hasNext(); ){
-					Object obj = it.next();
-					if (noRepeatValues.contains(obj))
-						continue;
-					if (obj instanceof String) {
-						if (((String)obj) == null || ((String)obj).trim().length() == 0)
-							continue;
-					}
-					
-					noRepeatValues.add(obj);
-				}
-				values.clear();
-				values.addAll(noRepeatValues);
-			}
-			
-			//最终解析完成
-			if ("1".equals(isArray)){
-				//如果字段key为数组且values不为空，继续沿用
+			try {
+				if (values.isEmpty()) 
+					values.add("");
+				
+				// 相同 key，若values不为空，继续沿用
 				if (map.containsKey(key)){
 					//将原来的值插入到前面
-					values.addAll(0, (Collection<?>) map.get(key));
+					Object obj = map.get(key);
+					if (obj instanceof Collection) {
+						values.addAll(0, (Collection<?>) obj);
+					} else {
+						values.add(0, obj);
+					}
 				}
 				
-				map.put(key, values);
-			}else{
-				map.put(key, values.get(0).toString());
+				//数组的话，需要去除重复和空空元素
+				if (values.size() >= 2){
+					List<Object> noRepeatValues = new ArrayList<Object>();
+					for (Iterator<Object> it = values.iterator(); it.hasNext(); ){
+						Object obj = it.next();
+						if (noRepeatValues.contains(obj))
+							continue;
+						if (obj instanceof String) {
+							if (((String)obj) == null || ((String)obj).trim().length() == 0)
+								continue;
+						}
+						
+						noRepeatValues.add(obj);
+					}
+					values.clear();
+					values.addAll(noRepeatValues);
+				}
+				
+				//如果设置了trim
+				if ("1".equals(isTrim) || "true".equals(isTrim)) {
+					List<String> results = new ArrayList<String>(values.size());
+					for (Object obj : values){
+						results.add(String.valueOf(obj).trim());
+					}
+					values.clear();
+					values.addAll(results);
+				}
+				
+				//最终解析完成
+				if ("1".equals(isArray)){
+					map.put(key, values);
+				}else{
+					map.put(key, values.get(0).toString());
+				}
+			} catch (Exception e) {
+				listener.onError(Thread.currentThread(), task, "field->"+key+" parse failed cause->"+e.toString(), e);
 			}
-			
 		}
 		
 		return map;
