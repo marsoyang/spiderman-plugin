@@ -546,19 +546,23 @@ public class ModelParser extends DefaultHandler{
 					continue;
 				List<String> vals = CommonUtil.findByRegex(input, regex);
 				if (vals == null)
-					continue;
-				for (String val : vals){
-					if (val == null || val.trim().length() == 0)
-						continue;
-					newVals.add(val);
+					newVals.add("");
+				else {
+					for (String val : vals){
+						if (val == null || val.trim().length() == 0)
+							continue;
+						newVals.add(val);
+					}
 				}
 			} catch (Exception e){
 				listener.onError(Thread.currentThread(), task, "regex->"+regex+" of "+obj+" parse failed", e);
-				newVals.add(null);
+				newVals.add("");
 			}
 		}
 		
-		list.clear();
-		list.addAll(newVals);
+		if (!newVals.isEmpty()){
+			list.clear();
+			list.addAll(newVals);
+		}
 	}
 }
