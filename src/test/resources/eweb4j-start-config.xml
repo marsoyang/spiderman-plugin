@@ -8,7 +8,7 @@
       <locale language="zh" country="CN"/>
     </locales>
     <properties>
-      <file path="spiderman.properties" global="1"/>
+      <file id="spiderman" path="spiderman.properties" global="0"/>
     </properties>
     <ioc>
       <open>1</open>
