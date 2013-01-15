@@ -1,12 +1,9 @@
 package spiderman.plugin.duplicate;
 
 import java.io.File;
-import java.util.Hashtable;
-import java.util.Map;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.eweb4j.ioc.IOC;
+import org.eweb4j.spiderman.spider.SpiderListener;
 import org.eweb4j.util.CommonUtil;
 import org.eweb4j.util.FileUtil;
 
@@ -18,41 +15,40 @@ import com.sleepycat.je.Environment;
 import com.sleepycat.je.OperationStatus;
 
 public class DocIDServer {
-
-	protected static final Log logger = LogFactory.getLog(DocIDServer.class);
-
-	protected static Map<String, Database> dbs = new Hashtable<String, Database>();
-
-	protected static final Object mutex = new Object();
-
-	protected static int lastDocID = 0;
 	
-	static {
+	private String name = null;
+	public Environment env = null;
+	public Database db = null;
+	private final Object mutex = new Object();
+	private int lastDocID = 0;
+	
+	public DocIDServer(String name, SpiderListener listener) {
+		this.name = name;
 		File dbEnv = IOC.getBean("file");
-		if (!dbEnv.exists())
-			throw new RuntimeException("dbEnv folder -> " + dbEnv.getAbsolutePath() + " not found !");
-		
+		if (!dbEnv.exists()) {
+			String error = "dbEnv folder -> " + dbEnv.getAbsolutePath() + " not found !";
+			RuntimeException e = new RuntimeException(error);
+			listener.onError(Thread.currentThread(), null, error, e);
+			throw e;
+		}
 		for (File f : dbEnv.listFiles()){
 			boolean flag = FileUtil.deleteFile(f);
-			if (!flag)
-				throw new RuntimeException("file -> " + f.getAbsolutePath() + " can not delete !");
-			
-		}
-	}
-	
-	private static Database getDb(String dbId) {
-		if (!dbs.containsKey(dbId)){
-			
-			DatabaseConfig dbConfig = new DatabaseConfig();
-			dbConfig.setAllowCreate(true);
-			Environment env = IOC.getBean("env");
-			dbs.put(dbId, env.openDatabase(null, dbId, dbConfig));
-			lastDocID = 0;
+			if (!flag) {
+				String error = "file -> " + f.getAbsolutePath() + " can not delete !";
+				RuntimeException e = new RuntimeException(error);
+				listener.onError(Thread.currentThread(), null, error, e);
+				throw e;
+			}
+			listener.onInfo(Thread.currentThread(), null, "file -> " + f.getAbsolutePath() + " delete success !");
 		}
 		
-		return dbs.get(dbId);
+		DatabaseConfig dbConfig = new DatabaseConfig();
+		dbConfig.setAllowCreate(true);
+		env = IOC.getBean("env");
+		db = env.openDatabase(null, name, dbConfig);
+		lastDocID = 0;
 	}
-
+	
 	/**
 	 * Returns the docid of an already seen url.
 	 * 
@@ -61,13 +57,13 @@ public class DocIDServer {
 	 * @return the docid of the url if it is seen before. Otherwise -1 is
 	 *         returned.
 	 */
-	public static int getDocId(String dbId, String url) {
+	public int getDocId(String url) {
 		synchronized (mutex) {
 			OperationStatus result;
 			DatabaseEntry value = new DatabaseEntry();
 			try {
 				DatabaseEntry key = new DatabaseEntry(url.getBytes());
-				result = getDb(dbId).get(null, key, value, null);
+				result = db.get(null, key, value, null);
 
 				if (result == OperationStatus.SUCCESS
 						&& value.getData().length > 0) {
@@ -80,18 +76,18 @@ public class DocIDServer {
 		}
 	}
 
-	public static int getNewDocID(String dbId, String url) {
+	public int getNewDocID(String url) {
 		synchronized (mutex) {
 			try {
 				// Make sure that we have not already assigned a docid for this
 				// URL
-				int docid = getDocId(dbId, url);
+				int docid = getDocId(url);
 				if (docid > 0) {
 					return docid;
 				}
 
 				lastDocID++;
-				getDb(dbId).put(null, new DatabaseEntry(url.getBytes()), new DatabaseEntry(CommonUtil.int2ByteArray(lastDocID)));
+				db.put(null, new DatabaseEntry(url.getBytes()), new DatabaseEntry(CommonUtil.int2ByteArray(lastDocID)));
 				return lastDocID;
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -100,14 +96,14 @@ public class DocIDServer {
 		}
 	}
 
-	public static void addUrlAndDocId(String dbId, String url, int docId) throws Exception {
+	public void addUrlAndDocId(String url, int docId) throws Exception {
 		synchronized (mutex) {
 			if (docId <= lastDocID) {
 				throw new Exception("Requested doc id: " + docId + " is not larger than: " + lastDocID);
 			}
 			
 			// Make sure that we have not already assigned a docid for this URL
-			int prevDocid = getDocId(dbId, url);
+			int prevDocid = getDocId(url);
 			if (prevDocid > 0) {
 				if (prevDocid == docId) {
 					return;
@@ -115,35 +111,38 @@ public class DocIDServer {
 				throw new Exception("Doc id: " + prevDocid + " is already assigned to URL: " + url);
 			}
 			
-			getDb(dbId).put(null, new DatabaseEntry(url.getBytes()), new DatabaseEntry(CommonUtil.int2ByteArray(docId)));
+			db.put(null, new DatabaseEntry(url.getBytes()), new DatabaseEntry(CommonUtil.int2ByteArray(docId)));
 			lastDocID = docId;
 		}
 	}
 	
-	public static boolean isSeenBefore(String dbId, String url) {
-		return getDocId(dbId, url) != -1;
+	public boolean isSeenBefore(String url) {
+		return getDocId(url) != -1;
 	}
 
-	public static int getDocCount(String dbId) {
+	public int getDocCount() {
 		try {
-			return (int) getDb(dbId).count();
+			return (int) db.count();
 		} catch (DatabaseException e) {
 			e.printStackTrace();
 		}
 		return -1;
 	}
 
-	public static void sync(String dbId) {
+	public void sync() {
 		try {
-			getDb(dbId).sync();
+			db.sync();
 		} catch (DatabaseException e) {
 			e.printStackTrace();
 		}
 	}
 
-	public static void close(String dbId) {
+	public void close() {
 		try {
-			getDb(dbId).close();
+			db.close();
+			env.removeDatabase(null, name);
+			env.cleanLog();
+			env.close();
 		} catch (DatabaseException e) {
 			e.printStackTrace();
 		}

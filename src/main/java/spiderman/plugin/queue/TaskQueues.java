@@ -12,6 +12,7 @@ import org.eweb4j.spiderman.url.UrlRuleChecker;
  * @author weiwei l.weiwei@163.com
  * @date 2013-1-10 上午01:00:20
  */
+@Deprecated
 public class TaskQueues {
 
 	private static Hashtable<String, PriorityBlockingQueue<Task>> queueList = new Hashtable<String,PriorityBlockingQueue<Task>>();

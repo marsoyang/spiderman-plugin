@@ -4,12 +4,18 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 import org.eweb4j.spiderman.plugin.TaskPushPoint;
+import org.eweb4j.spiderman.spider.SpiderListener;
 import org.eweb4j.spiderman.task.Task;
+import org.eweb4j.spiderman.xml.Site;
 import org.eweb4j.util.CommonUtil;
 
-import spiderman.plugin.queue.TaskQueues;
-
 public class TaskPushPointImpl implements TaskPushPoint{
+	
+	public void init(Site site, SpiderListener listener) {
+	}
+
+	public void destroy() {
+	}
 	
 	public Collection<Task> pushTask(Collection<Task> validTasks) throws Exception{
 		Collection<Task> newTasks = new ArrayList<Task>();
@@ -19,7 +25,7 @@ public class TaskPushPointImpl implements TaskPushPoint{
 				if (!CommonUtil.isSameHost(task.site.getUrl(), task.url))
 					continue;
 				
-				boolean isOk = TaskQueues.pushTask(task);
+				boolean isOk = task.site.queue.pushTask(task);
 				if (isOk)
 					newTasks.add(task);
 			}catch(Exception e){

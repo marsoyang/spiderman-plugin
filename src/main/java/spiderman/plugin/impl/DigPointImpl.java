@@ -13,6 +13,7 @@ import org.eweb4j.spiderman.infra.IframeLinkFinder;
 import org.eweb4j.spiderman.plugin.DigPoint;
 import org.eweb4j.spiderman.spider.SpiderListener;
 import org.eweb4j.spiderman.task.Task;
+import org.eweb4j.spiderman.xml.Site;
 
 import spiderman.plugin.util.DefaultLinkNormalizer;
 import spiderman.plugin.util.LinkNormalizer;
@@ -24,7 +25,14 @@ public class DigPointImpl implements DigPoint{
 	private FetchResult result = null;
 	private Task task = null;
 	
-	public void init(FetchResult result, Task task, SpiderListener listener) throws Exception {
+	public void init(Site site, SpiderListener listener) {
+		
+	}
+
+	public void destroy() {
+	}
+
+	public void context(FetchResult result, Task task) throws Exception {
 		this.result = result;
 		this.task = task;
 	}

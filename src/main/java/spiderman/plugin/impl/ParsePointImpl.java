@@ -7,6 +7,7 @@ import org.eweb4j.spiderman.fetcher.Page;
 import org.eweb4j.spiderman.plugin.ParsePoint;
 import org.eweb4j.spiderman.spider.SpiderListener;
 import org.eweb4j.spiderman.task.Task;
+import org.eweb4j.spiderman.xml.Site;
 import org.eweb4j.spiderman.xml.Target;
 
 import spiderman.plugin.util.ModelParser;
@@ -18,11 +19,17 @@ public class ParsePointImpl implements ParsePoint{
 	private Target target ;
 	private Page page;
 	
-	public void init(Task task, Target target, Page page, SpiderListener listener) throws Exception{
+	public void init(Site site, SpiderListener listener) {
+		this.listener = listener;
+	}
+
+	public void destroy() {
+	}
+	
+	public void context(Task task, Target target, Page page) throws Exception{
 		this.task = task;
 		this.target = target;
 		this.page = page;
-		this.listener = listener;
 	}
 	
 	public List<Map<String, Object>> parse(List<Map<String, Object>> models) throws Exception {
