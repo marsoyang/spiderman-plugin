@@ -3,6 +3,7 @@ package spiderman.plugin.duplicate;
 import java.io.File;
 
 import org.eweb4j.ioc.IOC;
+import org.eweb4j.spiderman.spider.Settings;
 import org.eweb4j.spiderman.spider.SpiderListener;
 import org.eweb4j.util.CommonUtil;
 import org.eweb4j.util.FileUtil;
@@ -12,6 +13,7 @@ import com.sleepycat.je.DatabaseConfig;
 import com.sleepycat.je.DatabaseEntry;
 import com.sleepycat.je.DatabaseException;
 import com.sleepycat.je.Environment;
+import com.sleepycat.je.EnvironmentConfig;
 import com.sleepycat.je.OperationStatus;
 
 public class DocIDServer {
@@ -24,14 +26,18 @@ public class DocIDServer {
 	
 	public DocIDServer(String name, SpiderListener listener) {
 		this.name = name;
-		File dbEnv = IOC.getBean("file");
-		if (!dbEnv.exists()) {
-			String error = "dbEnv folder -> " + dbEnv.getAbsolutePath() + " not found !";
+		File _dbEnv = new File(Settings.website_visited_folder());
+		if (!_dbEnv.exists()) {
+			String error = "dbEnv folder -> " + _dbEnv.getAbsolutePath() + " not found !";
 			RuntimeException e = new RuntimeException(error);
 			listener.onError(Thread.currentThread(), null, error, e);
 			throw e;
 		}
-		for (File f : dbEnv.listFiles()){
+		File dir = new File(_dbEnv.getAbsolutePath()+"/"+name);
+		if (!dir.exists())
+			dir.mkdir();
+		
+		for (File f : dir.listFiles()){
 			boolean flag = FileUtil.deleteFile(f);
 			if (!flag) {
 				String error = "file -> " + f.getAbsolutePath() + " can not delete !";
@@ -44,7 +50,9 @@ public class DocIDServer {
 		
 		DatabaseConfig dbConfig = new DatabaseConfig();
 		dbConfig.setAllowCreate(true);
-		env = IOC.getBean("env");
+		EnvironmentConfig ec = new EnvironmentConfig();
+		ec.setAllowCreate(true);
+		env = new Environment(dir, ec);
 		db = env.openDatabase(null, name, dbConfig);
 		lastDocID = 0;
 	}

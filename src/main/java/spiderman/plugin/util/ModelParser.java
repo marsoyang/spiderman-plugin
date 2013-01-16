@@ -1,8 +1,6 @@
 package spiderman.plugin.util;
 
 import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -26,7 +24,6 @@ import org.eweb4j.spiderman.xml.Field;
 import org.eweb4j.spiderman.xml.Parsers;
 import org.eweb4j.spiderman.xml.Target;
 import org.eweb4j.util.CommonUtil;
-import org.eweb4j.util.FileUtil;
 import org.eweb4j.util.xml.Attrs;
 import org.eweb4j.util.xml.Tags;
 import org.htmlcleaner.HtmlCleaner;
@@ -244,6 +241,7 @@ public class ModelParser extends DefaultHandler{
 				String attribute = parser.getAttribute();
 				String exp = parser.getExp();
 				String regex = parser.getRegex();
+				String skipRgxFail = parser.getSkipRgxFail();
 				try {
 					if (xpath != null && xpath.trim().length() > 0) {
 						
@@ -266,7 +264,7 @@ public class ModelParser extends DefaultHandler{
 							}
 							
 							//正则
-							parseByRegex(regex, values);
+							parseByRegex(regex, skipRgxFail, values);
 							// EXP表达式
 							parseByExp(exp, values);
 						}else if (xpath.endsWith("/text()")){
@@ -275,7 +273,7 @@ public class ModelParser extends DefaultHandler{
 								values.add(node.getNodeValue());
 							}
 							//正则
-							parseByRegex(regex, values);
+							parseByRegex(regex, skipRgxFail, values);
 							// EXP表达式
 							parseByExp(exp, values);
 						} else {
@@ -287,7 +285,7 @@ public class ModelParser extends DefaultHandler{
 							// EXP表达式
 							parseByExp(exp, values);
 							//正则
-							parseByRegex(regex, values);
+							parseByRegex(regex, skipRgxFail, values);
 						}
 					}else{
 						List<Object> newValues = new ArrayList<Object>(values.size());
@@ -295,7 +293,7 @@ public class ModelParser extends DefaultHandler{
 							newValues.add(obj.toString());
 						}
 						//正则
-						parseByRegex(regex, newValues);
+						parseByRegex(regex, skipRgxFail, newValues);
 						// EXP表达式
 						parseByExp(exp, newValues);
 						
@@ -396,6 +394,7 @@ public class ModelParser extends DefaultHandler{
 				String attribute = parser.getAttribute();
 				String exp = parser.getExp();
 				String regex = parser.getRegex();
+				String skipRgxFail = parser.getSkipRgxFail();
 				try {
 					if (xpath != null && xpath.trim().length() > 0) {
 						Object[] nodeVals = rootNode.evaluateXPath(xpath);
@@ -409,15 +408,17 @@ public class ModelParser extends DefaultHandler{
 								values.add(attrVal);
 							}
 							//正则
-							parseByRegex(regex, values);
+							parseByRegex(regex, skipRgxFail, values);
 							// EXP表达式
 							parseByExp(exp, values);
 						}else if (xpath.endsWith("/text()")){
 							for (Object nodeVal : nodeVals){
 								values.add(nodeVal.toString());
 							}
+							
 							//正则
-							parseByRegex(regex, values);
+							parseByRegex(regex, skipRgxFail, values);
+							
 							// EXP表达式
 							parseByExp(exp, values);
 						}else {
@@ -425,11 +426,13 @@ public class ModelParser extends DefaultHandler{
 								TagNode node = (TagNode)nodeVal;
 								values.add(node);
 							}
+							
 							// 此种方式获取到的Node节点大部分都不是字符串，因此先执行表达式后执行正则
 							// EXP表达式
 							parseByExp(exp, values);
+							
 							//正则
-							parseByRegex(regex, values);
+							parseByRegex(regex, skipRgxFail, values);
 						}
 					}else {
 						
@@ -439,7 +442,7 @@ public class ModelParser extends DefaultHandler{
 							newValues.add(nodeVal.toString());
 						}
 						//正则
-						parseByRegex(regex, newValues);
+						parseByRegex(regex, skipRgxFail, newValues);
 						// EXP表达式
 						parseByExp(exp, newValues);
 						
@@ -546,6 +549,8 @@ public class ModelParser extends DefaultHandler{
 				} catch (Exception e){
 					if (!isValBlank)
 						listener.onError(Thread.currentThread(), task, "exp->"+exp+" eval failed", e);
+				} finally {
+					fel.getContext().set("$this", "");//解析完表达式之后要重置这个this变量
 				}
 			}
 		}
@@ -556,7 +561,7 @@ public class ModelParser extends DefaultHandler{
 		}
 	}
 	
-	private void parseByRegex(String regex, Collection<Object> list) {
+	private void parseByRegex(String regex, String skipRgxFail, Collection<Object> list) {
 		if (regex == null || regex.trim().length() == 0)
 			return ;
 		List<Object> newVals = new ArrayList<Object>(list.size());
@@ -566,17 +571,26 @@ public class ModelParser extends DefaultHandler{
 				if (input == null || input.trim().length() == 0)
 					continue;
 				List<String> vals = CommonUtil.findByRegex(input, regex);
-				if (vals == null)
+				//如果REGEX找不到
+				if (vals == null) {
+					if ("1".equals(skipRgxFail) || "true".equals(skipRgxFail))
+						continue;
+					
 					newVals.add("");
-				else {
+				} else {
 					for (String val : vals){
-						if (val == null || val.trim().length() == 0)
-							continue;
+						if (val == null || val.trim().length() == 0){
+							if ("1".equals(skipRgxFail) || "true".equals(skipRgxFail))
+								continue;
+							val = "";
+						}
 						newVals.add(val);
 					}
 				}
 			} catch (Exception e){
 				listener.onError(Thread.currentThread(), task, "regex->"+regex+" of "+obj+" parse failed", e);
+				if ("1".equals(skipRgxFail) || "true".equals(skipRgxFail))
+					continue;
 				newVals.add("");
 			}
 		}
