@@ -2,7 +2,6 @@ package spiderman.plugin.duplicate;
 
 import java.io.File;
 
-import org.eweb4j.ioc.IOC;
 import org.eweb4j.spiderman.spider.Settings;
 import org.eweb4j.spiderman.spider.SpiderListener;
 import org.eweb4j.util.CommonUtil;
