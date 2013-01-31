@@ -22,8 +22,8 @@ import spiderman.plugin.util.Util;
 
 public class DigPointImpl implements DigPoint{
 
-	private FetchResult result = null;
-	private Task task = null;
+//	private FetchResult result = null;
+//	private Task task = null;
 	
 	public void init(Site site, SpiderListener listener) {
 		
@@ -32,16 +32,16 @@ public class DigPointImpl implements DigPoint{
 	public void destroy() {
 	}
 
-	public void context(FetchResult result, Task task) throws Exception {
-		this.result = result;
-		this.task = task;
-	}
+//	public void context(FetchResult result, Task task) throws Exception {
+//		this.result = result;
+//		this.task = task;
+//	}
 	
-	public Collection<String> digNewUrls(Collection<String> urls) throws Exception {
-		return this.digNewUrls(result);
+	public Collection<String> digNewUrls(FetchResult result, Task task, Collection<String> urls) throws Exception {
+		return this.digNewUrls(result, task);
 	}
 
-	private Collection<String> digNewUrls(FetchResult result) throws Exception{
+	private Collection<String> digNewUrls(FetchResult result, Task task) throws Exception{
 		if (result == null)
 			return null;
 		

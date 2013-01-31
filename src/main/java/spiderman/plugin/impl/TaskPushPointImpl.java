@@ -17,7 +17,7 @@ public class TaskPushPointImpl implements TaskPushPoint{
 	public void destroy() {
 	}
 	
-	public Collection<Task> pushTask(Collection<Task> validTasks) throws Exception{
+	public synchronized Collection<Task> pushTask(Collection<Task> validTasks) throws Exception{
 		Collection<Task> newTasks = new ArrayList<Task>();
 		for (Task task : validTasks){
 			try{

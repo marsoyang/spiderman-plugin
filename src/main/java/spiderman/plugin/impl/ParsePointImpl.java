@@ -14,10 +14,10 @@ import spiderman.plugin.util.ModelParser;
 
 public class ParsePointImpl implements ParsePoint{
 
-	private Task task;
+//	private Task task;
 	private SpiderListener listener;
-	private Target target ;
-	private Page page;
+//	private Target target ;
+//	private Page page;
 	
 	public void init(Site site, SpiderListener listener) {
 		this.listener = listener;
@@ -26,17 +26,17 @@ public class ParsePointImpl implements ParsePoint{
 	public void destroy() {
 	}
 	
-	public void context(Task task, Target target, Page page) throws Exception{
-		this.task = task;
-		this.target = target;
-		this.page = page;
-	}
+//	public synchronized void context(Task task, Target target, Page page) throws Exception{
+//		this.task = task;
+//		this.target = target;
+//		this.page = page;
+//	}
 	
-	public List<Map<String, Object>> parse(List<Map<String, Object>> models) throws Exception {
-		return parseTargetModelByXpathAndRegex();
+	public List<Map<String, Object>> parse(Task task, Target target, Page page, List<Map<String, Object>> models) throws Exception {
+		return parseTargetModelByXpathAndRegex(task, target, page);
 	}
 
-	private List<Map<String,Object>> parseTargetModelByXpathAndRegex() throws Exception {
+	private List<Map<String,Object>> parseTargetModelByXpathAndRegex(Task task, Target target, Page page) throws Exception {
 		ModelParser parser = new ModelParser(task, target, listener);
 		return parser.parse(page);
 	}

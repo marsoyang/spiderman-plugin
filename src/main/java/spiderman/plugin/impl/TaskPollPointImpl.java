@@ -16,7 +16,7 @@ public class TaskPollPointImpl implements TaskPollPoint{
 	public void destroy() {
 	}
 	
-	public Task pollTask() throws Exception{
+	public synchronized Task pollTask() throws Exception{
 		return site.queue.pollTask();
 	}
 }

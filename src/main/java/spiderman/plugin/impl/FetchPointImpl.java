@@ -18,9 +18,11 @@ import spiderman.plugin.util.SpiderConfig;
 public class FetchPointImpl implements FetchPoint{
 
 	private SpiderListener listener = null;
-	private Task task = null;
+//	private Task task = null;
+	private Site site = null;
 	
 	public void init(Site site, SpiderListener listener) {
+		this.site = site;
 		this.listener = listener;
 	}
 
@@ -28,13 +30,13 @@ public class FetchPointImpl implements FetchPoint{
 	}
 
 	
-	public void context(Task task) throws Exception {
-		this.task = task;
-	}
+//	public void context(Task task) throws Exception {
+//		this.task = task;
+//	}
 	
-	public FetchResult fetch(FetchResult result) throws Exception {
-		synchronized (this.task.site) {
-			if (this.task.site.fetcher == null){
+	public FetchResult fetch(Task task, FetchResult result) throws Exception {
+		synchronized (site) {
+			if (site.fetcher == null){
 				PageFetcherImpl fetcher = new PageFetcherImpl();
 				SpiderConfig config = new SpiderConfig();
 				config.setCharset(task.site.getCharset());
@@ -49,10 +51,10 @@ public class FetchPointImpl implements FetchPoint{
 				config.setPolitenessDelay(delay);
 				fetcher.setConfig(config);
 				
-				fetcher.init(this.task.site);
-				this.task.site.fetcher = fetcher;
+				fetcher.init(site);
+				site.fetcher = fetcher;
 			}
-			FetchResult fr = this.task.site.fetcher.fetch(task.url.replace(" ", "%20"));
+			FetchResult fr = site.fetcher.fetch(task.url.replace(" ", "%20"));
 			return fr;
 		}
 //		return fetch();

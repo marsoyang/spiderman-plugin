@@ -10,7 +10,7 @@ import spiderman.plugin.util.Util;
 
 public class TargetPointImpl implements TargetPoint{
 
-	private Task task = null;
+//	private Task task = null;
 	
 	public void init(Site site, SpiderListener listener) {
 	}
@@ -18,11 +18,11 @@ public class TargetPointImpl implements TargetPoint{
 	public void destroy() {
 	}
 	
-	public void context(Task task) throws Exception {
-		this.task = task;
-	}
+//	public synchronized void context(Task task) throws Exception {
+//		this.task = task;
+//	}
 	
-	public Target confirmTarget(Target target) throws Exception {
+	public synchronized Target confirmTarget(Task task, Target target) throws Exception {
 		return Util.isTargetUrl(task);
 	}
 

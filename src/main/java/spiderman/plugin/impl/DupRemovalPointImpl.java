@@ -15,7 +15,7 @@ public class DupRemovalPointImpl implements DupRemovalPoint{
 	private SpiderListener listener;
 	private final Object mutex = new Object();
 	private DocIDServer db = null;
-	private Collection<String> newUrls = null;
+//	private Collection<String> newUrls = null;
 	private Site site  = null;
 	
 	public void init(Site site, SpiderListener listener) {
@@ -39,11 +39,11 @@ public class DupRemovalPointImpl implements DupRemovalPoint{
 		}
 	}
 	
-	public void context(Task task, Collection<String> newUrls) {
-		this.newUrls = newUrls;
-	}
+//	public void context(Task task, Collection<String> newUrls) {
+//		this.newUrls = newUrls;
+//	}
 	
-	public Collection<Task> removeDuplicateTask(Collection<Task> tasks){
+	public Collection<Task> removeDuplicateTask(Task task, Collection<String> newUrls, Collection<Task> tasks){
 		synchronized (mutex) {
 			if (db == null)
 				return null;
