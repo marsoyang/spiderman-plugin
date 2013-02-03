@@ -13,7 +13,6 @@ import spiderman.plugin.duplicate.DocIDServer;
 public class DupRemovalPointImpl implements DupRemovalPoint{
 	
 	private SpiderListener listener;
-	private final Object mutex = new Object();
 	private DocIDServer db = null;
 //	private Collection<String> newUrls = null;
 	private Site site  = null;
@@ -21,21 +20,17 @@ public class DupRemovalPointImpl implements DupRemovalPoint{
 	public void init(Site site, SpiderListener listener) {
 		this.site = site;
 		this.listener = listener;
-		synchronized (mutex) {
-			if (db == null) {
-				db = new DocIDServer(site.getName(), listener);
-				listener.onInfo(Thread.currentThread(), null, "DocIDServer -> " + site.getName() + " initial success...");
-			}
+		if (db == null) {
+			db = new DocIDServer(site.getName(), listener);
+			listener.onInfo(Thread.currentThread(), null, "DocIDServer -> " + site.getName() + " initial success...");
 		}
 	}
 
 	public void destroy() {
-		synchronized (mutex) {
-			if (db != null) {
-				db.close();
-				db = null;
-				listener.onInfo(Thread.currentThread(), null, "DocIDServer -> " + site.getName() + " destroy success...");
-			}
+		if (db != null) {
+			db.close();
+			db = null;
+			listener.onInfo(Thread.currentThread(), null, "DocIDServer -> " + site.getName() + " destroy success...");
 		}
 	}
 	
@@ -43,11 +38,10 @@ public class DupRemovalPointImpl implements DupRemovalPoint{
 //		this.newUrls = newUrls;
 //	}
 	
-	public Collection<Task> removeDuplicateTask(Task task, Collection<String> newUrls, Collection<Task> tasks){
-		synchronized (mutex) {
-			if (db == null)
-				return null;
-		}
+	public synchronized Collection<Task> removeDuplicateTask(Task task, Collection<String> newUrls, Collection<Task> tasks){
+		if (db == null)
+			return null;
+		
 		Collection<Task> validTasks = new ArrayList<Task>();
 		for (String url : newUrls){
 			Task newTask = new Task(url, site, 10);
