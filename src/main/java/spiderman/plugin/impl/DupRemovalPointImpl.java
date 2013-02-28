@@ -44,7 +44,7 @@ public class DupRemovalPointImpl implements DupRemovalPoint{
 		
 		Collection<Task> validTasks = new ArrayList<Task>();
 		for (String url : newUrls){
-			Task newTask = new Task(url, site, 10);
+			Task newTask = new Task(url, task.url, site, 10);
 			int docId = db.getDocId(url);
 			if (docId < 0){
 				docId = db.getNewDocID(url);

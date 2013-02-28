@@ -49,14 +49,17 @@
 			-->
 			<target name="deal">
 				<!--
-				  | 目标URL匹配规则
+				  | 限制目标URL的来源
 				-->
-				<urls policy="and">
-					<!--
-					  | 同前面的队列规则
-					-->
+				<sourceRules policy="and">
+					<rule type="regex" value="" />
+				</sourceRules>
+				<!--
+				  | 目标URL的规则
+				-->
+				<urlRules policy="and">
 					<rule type="regex" value="^.*/deals/.*$" />
-				</urls>
+				</urlRules>
 				<!--
 				  | 目标网页的数据模型
 				-->

@@ -5,6 +5,7 @@ import java.util.Collection;
 import org.eweb4j.spiderman.plugin.TaskSortPoint;
 import org.eweb4j.spiderman.spider.SpiderListener;
 import org.eweb4j.spiderman.task.Task;
+import org.eweb4j.spiderman.url.SourceUrlChecker;
 import org.eweb4j.spiderman.xml.Site;
 import org.eweb4j.spiderman.xml.Target;
 
@@ -20,10 +21,19 @@ public class TaskSortPointImpl implements TaskSortPoint {
 	
 	public synchronized Collection<Task> sortTasks(Collection<Task> tasks) throws Exception {
 		for (Task task : tasks) {
-			// 如果url不符合需求，排序调回0，否则默�?0，Queue按排序从大到小取
+			// 检查url是否符合target的url规则，如果符合排序调整为10
 			Target tgt = Util.isTargetUrl(task);
-			if (tgt == null)
-				task.sort = 0;
+			if (tgt != null){
+				task.sort = 10;
+			}else{
+				//检查url是否符合target的sourceUrl规则，如果符合排序调整为20，否则为0
+				boolean isSourceUrlOk = SourceUrlChecker.checkSourceUrl(task.site.getTargets().getTarget().get(0).getSourceRules(), task.url);
+				if (isSourceUrlOk){
+					task.sort = 10;
+				}else{
+					task.sort = 0;
+				}
+			}
 		}
 
 		return tasks;
