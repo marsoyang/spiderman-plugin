@@ -13,23 +13,22 @@ import spiderman.plugin.duplicate.DocIDServer;
 public class DupRemovalPointImpl implements DupRemovalPoint{
 	
 	private SpiderListener listener;
-	private DocIDServer db = null;
 //	private Collection<String> newUrls = null;
 	private Site site  = null;
 	
 	public void init(Site site, SpiderListener listener) {
 		this.site = site;
 		this.listener = listener;
-		if (db == null) {
-			db = new DocIDServer(site.getName(), listener);
+		if (this.site.db == null) {
+			this.site.db = new DocIDServer(site.getName(), listener);
 			listener.onInfo(Thread.currentThread(), null, "DocIDServer -> " + site.getName() + " initial success...");
 		}
 	}
 
 	public void destroy() {
-		if (db != null) {
-			db.close();
-			db = null;
+		if (this.site.db != null) {
+			this.site.db.close();
+			this.site.db = null;
 			listener.onInfo(Thread.currentThread(), null, "DocIDServer -> " + site.getName() + " destroy success...");
 		}
 	}
@@ -39,15 +38,15 @@ public class DupRemovalPointImpl implements DupRemovalPoint{
 //	}
 	
 	public synchronized Collection<Task> removeDuplicateTask(Task task, Collection<String> newUrls, Collection<Task> tasks){
-		if (db == null)
+		if (this.site.db == null)
 			return null;
 		
 		Collection<Task> validTasks = new ArrayList<Task>();
 		for (String url : newUrls){
 			Task newTask = new Task(url, task.url, site, 10);
-			int docId = db.getDocId(url);
+			//如果db里面不存在该url加入到有效的task列表中去，否则认为是重复的task，要去掉
+			int docId = this.site.db.getDocId(url);
 			if (docId < 0){
-				docId = db.getNewDocID(url);
 				validTasks.add(newTask);
 			}
 		}

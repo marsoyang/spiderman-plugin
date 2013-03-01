@@ -33,7 +33,9 @@ public class ParsePointImpl implements ParsePoint{
 //	}
 	
 	public List<Map<String, Object>> parse(Task task, Target target, Page page, List<Map<String, Object>> models) throws Exception {
-		return parseTargetModelByXpathAndRegex(task, target, page);
+		List<Map<String, Object>> result = parseTargetModelByXpathAndRegex(task, target, page);
+		
+		return result;
 	}
 
 	private List<Map<String,Object>> parseTargetModelByXpathAndRegex(Task task, Target target, Page page) throws Exception {
