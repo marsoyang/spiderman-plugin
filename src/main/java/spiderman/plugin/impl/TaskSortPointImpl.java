@@ -24,12 +24,12 @@ public class TaskSortPointImpl implements TaskSortPoint {
 			// 检查url是否符合target的url规则，如果符合排序调整为10
 			Target tgt = Util.isTargetUrl(task);
 			if (tgt != null){
-				task.sort = 10;
+				task.sort = 20;
 			}else{
 				//检查url是否符合target的sourceUrl规则，如果符合排序调整为20，否则为0
 				boolean isSourceUrlOk = SourceUrlChecker.checkSourceUrl(task.site.getTargets().getTarget().get(0).getSourceRules(), task.url);
 				if (isSourceUrlOk){
-					task.sort = 20;
+					task.sort = 15;
 				}else{
 					task.sort = 0;
 				}

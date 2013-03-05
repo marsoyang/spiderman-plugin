@@ -122,11 +122,17 @@ public class PageFetcherImpl implements PageFetcher{
 	 * @param cookies
 	 */
 	public void init(Site site) {
-		for (org.eweb4j.spiderman.xml.Header header : site.getHeaders().getHeader()){
-			this.addHeader(header.getName(), header.getValue());
-		}
-		for (org.eweb4j.spiderman.xml.Cookie cookie : site.getCookies().getCookie()){
-			this.addCookie(cookie.getName(), cookie.getValue(), cookie.getHost(), cookie.getPath());
+		if (site != null) {
+			if (site.getHeaders() != null && site.getHeaders().getHeader() != null){
+				for (org.eweb4j.spiderman.xml.Header header : site.getHeaders().getHeader()){
+					this.addHeader(header.getName(), header.getValue());
+				}
+			}
+			if (site.getCookies() != null && site.getCookies().getCookie() != null){
+				for (org.eweb4j.spiderman.xml.Cookie cookie : site.getCookies().getCookie()){
+					this.addCookie(cookie.getName(), cookie.getValue(), cookie.getHost(), cookie.getPath());
+				}
+			}
 		}
 		
 		//设置HTTP参数
@@ -237,6 +243,8 @@ public class PageFetcherImpl implements PageFetcher{
 				return fetchResult;
 			}
 		} catch (Throwable e) {
+			e.printStackTrace();
+			fetchResult.setFetchedUrl(e.toString());
 			fetchResult.setStatusCode(Status.INTERNAL_SERVER_ERROR.ordinal());
 			return fetchResult;
 		} finally {

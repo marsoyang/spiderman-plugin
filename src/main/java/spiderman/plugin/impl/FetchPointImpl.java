@@ -34,6 +34,22 @@ public class FetchPointImpl implements FetchPoint{
 //		this.task = task;
 //	}
 	
+	public static void main(String[] args){
+		PageFetcherImpl fetcher = new PageFetcherImpl();
+		SpiderConfig config = new SpiderConfig();
+		config.setCharset("utf-8");
+		config.setPolitenessDelay(200);
+		fetcher.setConfig(config);
+		fetcher.init(null);
+		try {
+			FetchResult rs = fetcher.fetch("http://www.honeybay.com/c/homeliving");
+			System.out.println(rs);
+			System.out.println(rs.getPage().getContent());
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
 	public FetchResult fetch(Task task, FetchResult result) throws Exception {
 		synchronized (site) {
 			if (site.fetcher == null){
