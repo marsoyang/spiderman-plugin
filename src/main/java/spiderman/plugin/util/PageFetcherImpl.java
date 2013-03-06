@@ -61,6 +61,7 @@ import org.eweb4j.spiderman.fetcher.Page;
 import org.eweb4j.spiderman.fetcher.PageFetcher;
 import org.eweb4j.spiderman.fetcher.Status;
 import org.eweb4j.spiderman.xml.Site;
+import org.eweb4j.util.CommonUtil;
 
 /**
  * Web 页面内容获取器
@@ -75,6 +76,7 @@ public class PageFetcherImpl implements PageFetcher{
 	private long lastFetchTime = 0;
 	private SpiderConfig config;
 	private Map<String, String> headers = new Hashtable<String, String>();
+	private Site site;
 	
 	public PageFetcherImpl(){
 	}
@@ -121,20 +123,7 @@ public class PageFetcherImpl implements PageFetcher{
 	 * @param aconfig
 	 * @param cookies
 	 */
-	public void init(Site site) {
-		if (site != null) {
-			if (site.getHeaders() != null && site.getHeaders().getHeader() != null){
-				for (org.eweb4j.spiderman.xml.Header header : site.getHeaders().getHeader()){
-					this.addHeader(header.getName(), header.getValue());
-				}
-			}
-			if (site.getCookies() != null && site.getCookies().getCookie() != null){
-				for (org.eweb4j.spiderman.xml.Cookie cookie : site.getCookies().getCookie()){
-					this.addCookie(cookie.getName(), cookie.getValue(), cookie.getHost(), cookie.getPath());
-				}
-			}
-		}
-		
+	public void init(Site _site) {
 		//设置HTTP参数
 		HttpParams params = new BasicHttpParams();
 		params.setParameter(CoreProtocolPNames.USER_AGENT, config.getUserAgentString());
@@ -155,9 +144,9 @@ public class PageFetcherImpl implements PageFetcher{
 		connectionManager = new ThreadSafeClientConnManager(schemeRegistry);
 		connectionManager.setMaxTotal(config.getMaxTotalConnections());
 		connectionManager.setDefaultMaxPerRoute(config.getMaxConnectionsPerHost());
-		
 		httpClient = new DefaultHttpClient(connectionManager, params);
-		httpClient.getParams().setIntParameter("http.socket.timeout", 15000);
+		
+		httpClient.getParams().setIntParameter("http.socket.timeout", 60000);
 		httpClient.getParams().setParameter(ClientPNames.COOKIE_POLICY, CookiePolicy.BEST_MATCH);
 
 		//设置响应拦截器
@@ -177,6 +166,20 @@ public class PageFetcherImpl implements PageFetcher{
                 }
             }
         });
+        
+		if (_site != null) {
+			this.site = _site;
+			if (this.site.getHeaders() != null && this.site.getHeaders().getHeader() != null){
+				for (org.eweb4j.spiderman.xml.Header header : this.site.getHeaders().getHeader()){
+					this.addHeader(header.getName(), header.getValue());
+				}
+			}
+			if (this.site.getCookies() != null && this.site.getCookies().getCookie() != null){
+				for (org.eweb4j.spiderman.xml.Cookie cookie : this.site.getCookies().getCookie()){
+					this.addCookie(cookie.getName(), cookie.getValue(), cookie.getHost(), cookie.getPath());
+				}
+			}
+		}
 	}
 
 	/**
@@ -230,16 +233,26 @@ public class PageFetcherImpl implements PageFetcher{
 						fetchResult.setMovedToUrl(URLCanonicalizer.getCanonicalURL(locationHeader.getValue(), toFetchURL));
 				}
 				//只要不是OK的除了设置跳转URL外设置statusCode即可返回
+				//判断是否有忽略状态码的设置
+				if (this.site.getSkipStatusCode() != null && this.site.getSkipStatusCode().trim().length() > 0){
+					String[] scs = this.site.getSkipStatusCode().split(",");
+					for (String code : scs){
+						int c = CommonUtil.toInt(code);
+						//忽略此状态码，依然解析entity
+						if (statusCode == c){
+							assemPage(fetchResult, entity);
+							break;
+						}
+					}
+				}
 				fetchResult.setStatusCode(statusCode);
 				return fetchResult;
 			}
 
 			//处理服务端返回的实体内容
 			if (entity != null) {
-				fetchResult.setStatusCode(HttpStatus.SC_OK);
-				Page page = load(entity);
-				page.setUrl(fetchResult.getFetchedUrl());
-				fetchResult.setPage(page);
+				fetchResult.setStatusCode(statusCode);
+				assemPage(fetchResult, entity);
 				return fetchResult;
 			}
 		} catch (Throwable e) {
@@ -258,6 +271,13 @@ public class PageFetcherImpl implements PageFetcher{
 		
 		fetchResult.setStatusCode(Status.UNSPECIFIED_ERROR.ordinal());
 		return fetchResult;
+	}
+
+	private void assemPage(FetchResult fetchResult, HttpEntity entity)
+			throws Exception {
+		Page page = load(entity);
+		page.setUrl(fetchResult.getFetchedUrl());
+		fetchResult.setPage(page);
 	}
 	
 	/**

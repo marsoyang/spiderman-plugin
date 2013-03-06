@@ -6,9 +6,12 @@ import java.util.Collection;
 import org.eweb4j.spiderman.plugin.DupRemovalPoint;
 import org.eweb4j.spiderman.spider.SpiderListener;
 import org.eweb4j.spiderman.task.Task;
+import org.eweb4j.spiderman.url.SourceUrlChecker;
 import org.eweb4j.spiderman.xml.Site;
+import org.eweb4j.spiderman.xml.Target;
 
 import spiderman.plugin.duplicate.DocIDServer;
+import spiderman.plugin.util.Util;
 
 public class DupRemovalPointImpl implements DupRemovalPoint{
 	
@@ -47,6 +50,19 @@ public class DupRemovalPointImpl implements DupRemovalPoint{
 			//如果db里面不存在该url加入到有效的task列表中去，否则认为是重复的task，要去掉
 			int docId = this.site.db.getDocId(url);
 			if (docId < 0){
+				try {
+					//如果是目标url并且不符合来源url的，不能被抓取，相当于重复了
+					Target tgt = Util.isTargetUrl(task);
+					if (tgt != null){
+						boolean isSourceUrlOk = SourceUrlChecker.checkSourceUrl(task.site.getTargets().getTarget().get(0).getSourceRules(), task.url);
+						if (!isSourceUrlOk) {
+							continue;
+						}
+					}
+				} catch (Exception e){
+					listener.onError(Thread.currentThread(), newTask, "", e);
+				}
+				
 				validTasks.add(newTask);
 			}
 		}

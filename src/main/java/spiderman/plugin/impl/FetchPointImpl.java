@@ -42,7 +42,7 @@ public class FetchPointImpl implements FetchPoint{
 		fetcher.setConfig(config);
 		fetcher.init(null);
 		try {
-			FetchResult rs = fetcher.fetch("http://www.honeybay.com/c/homeliving");
+			FetchResult rs = fetcher.fetch("http://www.bestbargain.com.sg/team.php?id=362");
 			System.out.println(rs);
 			System.out.println(rs.getPage().getContent());
 		} catch (Exception e) {
