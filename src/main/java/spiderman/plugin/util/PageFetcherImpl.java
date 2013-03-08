@@ -21,10 +21,12 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.Hashtable;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.zip.GZIPInputStream;
@@ -56,6 +58,7 @@ import org.apache.http.params.HttpParams;
 import org.apache.http.params.HttpProtocolParamBean;
 import org.apache.http.protocol.HttpContext;
 import org.apache.http.util.EntityUtils;
+import org.eweb4j.spiderman.fetcher.FetchRequest;
 import org.eweb4j.spiderman.fetcher.FetchResult;
 import org.eweb4j.spiderman.fetcher.Page;
 import org.eweb4j.spiderman.fetcher.PageFetcher;
@@ -188,10 +191,11 @@ public class PageFetcherImpl implements PageFetcher{
 	 * @param toFetchURL
 	 * @return
 	 */
-	public FetchResult fetch(String toFetchURL) throws Exception{
+	public FetchResult fetch(FetchRequest req) throws Exception{
 		FetchResult fetchResult = new FetchResult();
 		HttpGet get = null;
 		HttpEntity entity = null;
+		String toFetchURL = req.getUrl();
 		try {
 			get = new HttpGet(toFetchURL);
 			//设置请求GZIP压缩，注意，前面必须设置GZIP解压缩处理
@@ -213,8 +217,32 @@ public class PageFetcherImpl implements PageFetcher{
 				lastFetchTime = (new Date()).getTime();
 			}
 			
+			//记录get请求信息
+			Header[] headers = get.getAllHeaders();
+			for (Header h : headers){
+				Map<String, List<String>> hs = req.getHeaders();
+				String key = h.getName();
+				List<String> val = hs.get(key);
+				if (val == null)
+					val = new ArrayList<String>();
+				val.add(h.getValue());
+				
+				hs.put(key, val);
+			}
+			fetchResult.setReq(req);
 			//执行get访问，获取服务端返回内容
 			HttpResponse response = httpClient.execute(get);
+			headers = response.getAllHeaders();
+			for (Header h : headers){
+				Map<String, List<String>> hs = fetchResult.getHeaders();
+				String key = h.getName();
+				List<String> val = hs.get(key);
+				if (val == null)
+					val = new ArrayList<String>();
+				val.add(h.getValue());
+				
+				hs.put(key, val);
+			}
 			//设置已访问URL
 			fetchResult.setFetchedUrl(toFetchURL);
 			String uri = get.getURI().toString();

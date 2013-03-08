@@ -21,14 +21,15 @@ public class TaskSortPointImpl implements TaskSortPoint {
 	
 	public synchronized Collection<Task> sortTasks(Collection<Task> tasks) throws Exception {
 		for (Task task : tasks) {
-			// 检查url是否符合target的url规则，如果符合排序调整为10
+			// 检查url是否符合target的url规则，并且是否是来自于来源url，如果符合排序调整为20
 			Target tgt = Util.isTargetUrl(task);
-			if (tgt != null){
+			boolean isFromSourceUrl = SourceUrlChecker.checkSourceUrl(task.site.getTargets().getTarget().get(0).getSourceRules(), task.sourceUrl);
+			if (tgt != null && isFromSourceUrl){
 				task.sort = 20;
 			}else{
-				//检查url是否符合target的sourceUrl规则，如果符合排序调整为20，否则为0
-				boolean isSourceUrlOk = SourceUrlChecker.checkSourceUrl(task.site.getTargets().getTarget().get(0).getSourceRules(), task.url);
-				if (isSourceUrlOk){
+				//检查url是否符合target的sourceUrl规则，如果符合排序调整为15，否则为0
+				boolean isSourceUrl = SourceUrlChecker.checkSourceUrl(task.site.getTargets().getTarget().get(0).getSourceRules(), task.url);
+				if (isSourceUrl){
 					task.sort = 15;
 				}else{
 					task.sort = 0;

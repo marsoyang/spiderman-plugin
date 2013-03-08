@@ -45,7 +45,7 @@ public class SpiderConfig {
 	 */
 	private int maxPagesToFetch = -1;
 
-	private String userAgentString = "Mozilla/5.0 (Windows NT 6.1; rv:5.0.1) Gecko/20100101 Firefox/5.0.1 FirePHP/0.6";
+	private String userAgentString = "Spiderman[https://github.com/laiweiwei/spiderman]";
 
 	/**
 	 * Politeness delay in milliseconds (delay between sending two requests to
