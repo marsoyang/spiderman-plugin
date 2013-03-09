@@ -27,7 +27,6 @@ import org.eweb4j.spiderman.xml.Target;
 import spiderman.plugin.util.DefaultLinkNormalizer;
 import spiderman.plugin.util.LinkNormalizer;
 import spiderman.plugin.util.ModelParser;
-import spiderman.plugin.util.URLCanonicalizer;
 import spiderman.plugin.util.Util;
 
 public class DigPointImpl implements DigPoint{
@@ -71,8 +70,8 @@ public class DigPointImpl implements DigPoint{
 			for (Rule r : rules.getRule()){
 				//判断是否定义了digUrls
 				boolean isDigUrls = false;
-				Field digUrlField = r.getDigUrls();
-				if (digUrlField != null && digUrlField.getParsers() != null && !digUrlField.getParsers().getParser().isEmpty())
+				Model digModel = r.getDigUrls();
+				if (digModel != null && digModel.getField() != null && !digModel.getField().isEmpty())
 					isDigUrls = true;
 				
 				if (isDigUrls) {
@@ -81,30 +80,24 @@ public class DigPointImpl implements DigPoint{
 					if (isSourceUrl){
 						// 按照digUrlPaser的配置对页面进行解析得到URL
 						Target digTarget = new Target();
-						Model digModel = new Model();
-						digUrlField.setName("url");
-						digModel.setField(Arrays.asList(digUrlField));
 						digTarget.setModel(digModel);
 						digTarget.setNamespaces(site.getTargets().getTarget().get(0).getNamespaces());
 						ModelParser parser = new ModelParser(task, digTarget, listener);
 						Page sourcePage = result.getPage();
 						List<Map<String, Object>> models = parser.parse(sourcePage);
 						for (Field f : digTarget.getModel().getField()){
-							if ("url".equals(f.getName())){
-								for (Map<String, Object> model : models){
-									Object val = model.get("url");
-									//如果url是数组
-									if ("1".equals(f.getIsArray()) || "true".equals(f.getIsArray())){
-//										listener.onInfo(Thread.currentThread(), task, "dig new urls->"+(List<String>)val);
-										urls.addAll((List<String>)val);
-									}else{
-//										listener.onInfo(Thread.currentThread(), task, "dig new urls->"+val);
-										urls.add(String.valueOf(val));
-									}
+							for (Map<String, Object> model : models){
+								Object val = model.get(f.getName());
+								//如果url是数组
+								if ("1".equals(f.getIsArray()) || "true".equals(f.getIsArray())){
+//									listener.onInfo(Thread.currentThread(), task, "dig new urls->"+(List<String>)val);
+									urls.addAll((List<String>)val);
+								}else{
+//									listener.onInfo(Thread.currentThread(), task, "dig new urls->"+val);
+									urls.add(String.valueOf(val));
 								}
-								
-								break;
 							}
+								
 						}
 					}
 				}
@@ -128,9 +121,13 @@ public class DigPointImpl implements DigPoint{
 		List<String> newUrls = new ArrayList<String>(urls.size());
 		for (String url : urls) {
 			LinkNormalizer ln = new DefaultLinkNormalizer(hostUrl);
-			String newUrl = URLCanonicalizer.getCanonicalURL(ln.normalize(url));
+//			String newUrl = URLCanonicalizer.getCanonicalURL(ln.normalize(url));
+			String newUrl = ln.normalize(url);
 			if (newUrl.startsWith("mailto:"))
 				continue;
+			if (newUrls.contains(newUrl))
+				continue;
+			
 			newUrls.add(newUrl);
 		}
 		
