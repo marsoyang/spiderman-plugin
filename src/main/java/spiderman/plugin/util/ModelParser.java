@@ -1,7 +1,6 @@
 package spiderman.plugin.util;
 
 import java.io.ByteArrayInputStream;
-import java.io.File;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -11,7 +10,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import javax.xml.XMLConstants;
 import javax.xml.namespace.NamespaceContext;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -20,7 +18,6 @@ import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpression;
 import javax.xml.xpath.XPathFactory;
 
-import net.sf.saxon.lib.NamespaceConstant;
 import net.sf.saxon.xpath.XPathFactoryImpl;
 
 import org.eweb4j.spiderman.fetcher.Page;
@@ -32,7 +29,6 @@ import org.eweb4j.spiderman.xml.Namespaces;
 import org.eweb4j.spiderman.xml.Parsers;
 import org.eweb4j.spiderman.xml.Target;
 import org.eweb4j.util.CommonUtil;
-import org.eweb4j.util.FileUtil;
 import org.eweb4j.util.xml.Attrs;
 import org.eweb4j.util.xml.Tags;
 import org.htmlcleaner.HtmlCleaner;
@@ -81,6 +77,7 @@ public class ModelParser extends DefaultHandler{
     	fel.getContext().set("$Tags", $Tags);
     	fel.getContext().set("$Attrs", $Attrs);
     	fel.getContext().set("$Util", CommonUtil.class);
+    	fel.getContext().set("$ParserUtil", ParserUtil.class);
 		fel.getContext().set("$target", this.target);
 		fel.getContext().set("$listener", this.listener);
 		fel.getContext().set("$task_url", this.task.url);
@@ -88,105 +85,6 @@ public class ModelParser extends DefaultHandler{
 	
 	public ModelParser(Task task, Target target, SpiderListener listener) {
 		init(task, target, listener);
-	}
-	
-	public static void main(String[] args) throws Exception{
-		File file = new File("C:/Users/vivi/Downloads/9000425.xml");
-		String xml = FileUtil.readFile(file);
-		System.setProperty("javax.xml.xpath.XPathFactory:"+NamespaceConstant.OBJECT_MODEL_SAXON, "net.sf.saxon.xpath.XPathFactoryImpl");
-		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-        factory.setNamespaceAware(true); // never forget this!
-        DocumentBuilder builder = factory.newDocumentBuilder();
-        Document doc = builder.parse(new ByteArrayInputStream(xml.getBytes()));
-        XPathFactory xfactory = XPathFactoryImpl.newInstance();
-        XPath xpath = xfactory.newXPath();
-        //设置命名空间
-        xpath.setNamespaceContext(new NamespaceContext() {
-            public String getPrefix(String uri) {
-                throw new UnsupportedOperationException();
-            }
-            public Iterator<?> getPrefixes(String uri) {
-                throw new UnsupportedOperationException();
-            }
-			public String getNamespaceURI(String prefix) {
-				System.out.println("prefix->"+prefix);
-				if (prefix == null) throw new NullPointerException("Null prefix");
-		        else if ("deal".equals(prefix)) return "http://www.streetdeal.sg/";
-		        return XMLConstants.NULL_NS_URI;
-			}
-		});
-        
-        XPathExpression expr = xpath.compile("//item");
-        Object result = expr.evaluate(doc, XPathConstants.NODESET);
-        NodeList nodes = (NodeList) result;
-        
-        FelEngine fel = new FelEngineImpl();
-        for (int i = 0; i < nodes.getLength(); i++) {
-        	if (i > 0)
-        		break;
-            
-        	NodeList subs = (NodeList)xpath.compile("deal:image/text()").evaluate(nodes.item(i), XPathConstants.NODESET);
-        	if (subs == null || subs.getLength() == 0)
-             	continue;
-            for (int j = 0; j < subs.getLength(); j++) {
-            	Node item = subs.item(j);
-             	String value = item.getNodeValue();
-             	System.out.println(value);
-            }
-             
-//        	FelContext ctx = fel.getContext();
-//        	ctx.set("$this", node);
-//        	Tags $Tags = Tags.me();
-//        	Attrs $Attrs = Attrs.me();
-//			ctx.set("$Tags", $Tags);
-//			ctx.set("$Attrs", $Attrs);
-//    		
-//			System.out.println($Attrs.xml(ParserUtil.xml(node, false)).rm("style").Tags().kp("p").ok());
-//    		
-//    		System.out.println(fel.eval("$Attrs.xml($output($this)).rm('style').Tags().kp('p').ok()"));
-//    		
-//    		Object newVal =  MVEL.eval("org.eweb4j.util.CommonUtil.toXml($this, false)", ctx);
-//    		System.out.println(newVal);
-        }
-
-//        	
-           
-//        }
-//        System.out.println("count->"+count);
-        
-//        String html = FileUtil.readFile(new File("d:/html.html"));
-		
-//		String html = "<p>‘Relaxation is a state of mind’ sounded good until people tried keeping up 15-hour days and simultaneously thinking of the Maldives. Get the real deal with today’s Voucherlicious deal: $23.00 instead of $156.00 for a 60-minute Dermalogica Facial, including an Eye Paraffin Treatment, Eye Massage and Shoulder Massage at Colour Couture.</p><p> </p><p><img src=\"http://voucherlicious.com/app/webroot/images/12-12/colourcouture/C1.jpg\" /></p><p> </p><p><img src=\"http://voucherlicious.com/app/webroot/images/12-12/colourcouture/C2.jpg\" /></p><p> </p><p>Since its inception in 1986, the brand Dermalogica has quickly become the number-one choice for aestheticians worldwide. It is based around the concept of skin care as a health issue instead of a cosmetic concern. Extol the merits of Dermalogica facial treatment at Colour Couture as experienced therapists determine the best products for your skin type in a skin analysis before applying the appropriate products.</p><p> </p><p><img src=\"http://voucherlicious.com/app/webroot/images/12-12/colourcouture/C3.jpg\" /></p><p>"+	
-//"<img src=\"http://voucherlicious.com/app/webroot/images/12-12/colourcouture/C4.jpg\" /></p><p> </p><p>The eye paraffin treatment causes dark circles to diminish. This is due to the change of temperatures caused by the heating of the wax that stimulates nerve endings and improves blood circulation as well as gives a healthy glow to the delicate skin around the eyes.</p><p> </p><p><img src=\"http://voucherlicious.com/app/webroot/images/12-12/colourcouture/C5.jpg\" /></p><p> </p><p>Enjoy your hour-long treatment being concluded by a relaxing shoulder massage that will unload most tension. Providing deep relaxation to stressed shoulder muscles, shoulder massage stimulates blood flow and improves the lymph system as well as releasing endorphins! </p>                        <!-- <img src=\"img/pic01.png\" />"+	
-//"                        <img src=\"img/pic02.png\" /> -->";
-//		HtmlCleaner cleaner = new HtmlCleaner();
-//		cleaner.getProperties().setTreatDeprecatedTagsAsContent(true);
-//		TagNode tagNode = cleaner.clean("<div class='myclass'>I Love <u>OSChina.net</u>nothing.<u></u></div>");
-//		Object[] nodeVals = tagNode.evaluateXPath("//div[@class='myclass']");
-//		for (Object tag : nodeVals){
-//		    TagNode _tag = (TagNode)tag;
-//		    String rs = ParserUtil.xml(_tag,false);
-//		    System.out.println(rs);
-//		}
-		
-//		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-//        factory.setNamespaceAware(true); // never forget this!
-//        DocumentBuilder builder = factory.newDocumentBuilder();
-//        Document doc = builder.parse("http://www.streetdeal.sg/deals/view/4575/0/51_percent_off_JOHOR_Premium_Outlets_Shopping_Trip_Return_Coach_by_Transtar_Travel.html?utm_source=ilovedeals&utm_medium=referral&utm_campaign=cpc");
-//        XPathFactory xfactory = XPathFactoryImpl.newInstance();
-//        XPath xpath = xfactory.newXPath();
-//        XPathExpression expr = xpath.compile("//div[@class='highlights']");
-//        Object result = expr.evaluate(doc, XPathConstants.NODESET);
-//        NodeList nodes = (NodeList) result;
-//		String rs = ParserUtil.xml(nodes.item(0), false);
-//		System.out.println(rs);
-//		//第一步：获得解析工厂的实例  
-//        SAXParserFactory spf = SAXParserFactory.newInstance();  
-//        //第二部：获得工厂解析器  
-//        SAXParser sp = spf.newSAXParser();  
-//        //第三部：对xml进行解析  
-//        sp.parse(file, new ModelParser());
-        
 	}
 	
 	public List<Map<String, Object>> parse(Page page) throws Exception{
@@ -209,7 +107,8 @@ public class ModelParser extends DefaultHandler{
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         factory.setNamespaceAware(true); // never forget this!
         DocumentBuilder builder = factory.newDocumentBuilder();
-        Document doc = builder.parse(new ByteArrayInputStream(page.getContentData()));
+        String validXml = ParserUtil.checkUnicodeString(page.getContent());
+        Document doc = builder.parse(new ByteArrayInputStream(validXml.getBytes()));
         XPathFactory xfactory = XPathFactoryImpl.newInstance();
         XPath xpathParser = xfactory.newXPath();
         //设置命名空间
@@ -600,8 +499,12 @@ public class ModelParser extends DefaultHandler{
 		if (list == null || list.isEmpty()){
 			try {
 	    		Object newVal = fel.eval(exp);
-				if (newVal != null)
-					newValue.add(newVal);
+				if (newVal != null) {
+					if (newVal instanceof Collection)
+						newValue.addAll((Collection<?>)newVal);
+					else
+						newValue.add(newVal);
+				}
 			} catch (Exception e){
 //				listener.onError(Thread.currentThread(), task, "exp->"+exp+" eval failed", e);
 			}
@@ -617,8 +520,12 @@ public class ModelParser extends DefaultHandler{
 				}
 				try {
 		    		Object newVal = fel.eval(exp);
-					if (newVal != null)
-						newValue.add(newVal);
+					if (newVal != null) {
+						if (newVal instanceof Collection)
+							newValue.addAll((Collection<?>)newVal);
+						else
+							newValue.add(newVal);
+					}
 				} catch (Exception e){
 					if (!isValBlank)
 						listener.onError(Thread.currentThread(), task, "exp->"+exp+" eval failed", e);

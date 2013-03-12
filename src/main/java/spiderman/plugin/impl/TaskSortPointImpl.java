@@ -28,12 +28,12 @@ public class TaskSortPointImpl implements TaskSortPoint {
 			Target tgt = Util.isTargetUrl(task);
 			boolean isFromSourceUrl = SourceUrlChecker.checkSourceUrl(task.site.getTargets().getTarget().get(0).getSourceRules(), task.sourceUrl);
 			if (tgt != null && isFromSourceUrl){
-				task.sort = 5 + CommonUtil.toDouble("0."+System.currentTimeMillis()) + i;
+				task.sort = 0 + CommonUtil.toDouble("0."+System.currentTimeMillis()) + i;
 			}else{
 				//检查url是否符合target的sourceUrl规则
 				boolean isSourceUrl = SourceUrlChecker.checkSourceUrl(task.site.getTargets().getTarget().get(0).getSourceRules(), task.url);
 				if (isSourceUrl){
-					task.sort = 0 + CommonUtil.toDouble("0."+System.currentTimeMillis()) + i;
+					task.sort = 5 + CommonUtil.toDouble("0."+System.currentTimeMillis()) + i;
 				}else{
 					task.sort = 10 + CommonUtil.toDouble("0."+System.currentTimeMillis()) + i;
 				}
