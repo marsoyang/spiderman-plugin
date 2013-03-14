@@ -96,7 +96,6 @@ public class ModelParser extends DefaultHandler{
 			contentType = "text/html";
 		
 		boolean isXml = "xml".equalsIgnoreCase(contentType) || contentType.contains("text/xml") || contentType.contains("application/rss+xml") || contentType.contains("application/xml");
-		
 		if (isXml) 
 			return parseXml(page);
 		else
@@ -108,6 +107,7 @@ public class ModelParser extends DefaultHandler{
         factory.setNamespaceAware(true); // never forget this!
         DocumentBuilder builder = factory.newDocumentBuilder();
         String validXml = ParserUtil.checkUnicodeString(page.getContent());
+        fel.getContext().set("$page_content", validXml);
         Document doc = builder.parse(new ByteArrayInputStream(validXml.getBytes()));
         XPathFactory xfactory = XPathFactoryImpl.newInstance();
         XPath xpathParser = xfactory.newXPath();
@@ -320,8 +320,9 @@ public class ModelParser extends DefaultHandler{
 	private List<Map<String, Object>> parseHtml(Page page) throws Exception{
 		HtmlCleaner cleaner = new HtmlCleaner();
 		cleaner.getProperties().setTreatUnknownTagsAsContent(true);
-		TagNode rootNode = cleaner.clean(page.getContent());
-		
+		String html = page.getContent();
+		TagNode rootNode = cleaner.clean(html);
+		fel.getContext().set("$page_content", html);
         final List<Field> fields = target.getModel().getField();
 		String isModelArray = target.getModel().getIsArray();
 		String modelXpath = target.getModel().getXpath();

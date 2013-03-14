@@ -1,12 +1,17 @@
 package spiderman.plugin.util;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
 import org.eweb4j.spiderman.task.Task;
 import org.eweb4j.spiderman.url.UrlRuleChecker;
 import org.eweb4j.spiderman.xml.Target;
+import org.eweb4j.util.CommonUtil;
 import org.htmlcleaner.HtmlCleaner;
 import org.htmlcleaner.TagNode;
 
@@ -37,8 +42,7 @@ public class Util {
 			if (!href.startsWith("https://") && !href.startsWith("http://")){
 				href = new StringBuilder("http://").append(new URL(hostUrl).getHost()).append("/").append(href).toString();
 			}
-			
-			href = URLCanonicalizer.getCanonicalURL(href);
+//			href = URLCanonicalizer.getCanonicalURL(href);
 			if (href == null)
 				continue;
 			if (href.startsWith("mailto:"))
@@ -48,5 +52,31 @@ public class Util {
 		}
 		
 		return urls;
+	}
+	
+	public static void main(String[] args){
+		String html = getHtml("http://www.groupon.my/all-deals/klang");
+		List<String> rs = CommonUtil.findByRegex(html, "(?<=(\"dealPermaLink\":\")).[^\"]*");
+		System.out.println(rs);
+	}
+	
+	public static String getHtml(String urlString) {  
+	    try {  
+	      StringBuffer html = new StringBuffer();  
+	      URL url = new URL(urlString);  
+	      HttpURLConnection conn = (HttpURLConnection) url.openConnection();  
+	      InputStreamReader isr = new InputStreamReader(conn.getInputStream());  
+	      BufferedReader br = new BufferedReader(isr);  
+	      String temp;  
+	      while ((temp = br.readLine()) != null) {  
+	        html.append(temp).append("\n");  
+	      }  
+	      br.close();  
+	      isr.close();  
+	      return html.toString();  
+	    } catch (Exception e) {  
+	      e.printStackTrace();  
+	      return null;  
+	    }  
 	}
 }

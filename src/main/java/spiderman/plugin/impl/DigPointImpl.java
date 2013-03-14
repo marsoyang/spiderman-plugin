@@ -63,13 +63,14 @@ public class DigPointImpl implements DigPoint{
 			if (!moveUrl.equals(task.url))
 				urls.add(moveUrl);
 		}
+		//判断是否定义了digUrls
+		boolean isDigUrls = false;
+		
 		// 如果定义了sourceUrl的digUrls，只是用这个方式发现新url
 		Target target = site.getTargets().getTarget().get(0);
 		Rules rules = target.getSourceRules();
 		if (rules != null && rules.getRule() != null && !rules.getRule().isEmpty()){
 			for (Rule r : rules.getRule()){
-				//判断是否定义了digUrls
-				boolean isDigUrls = false;
 				Model digModel = r.getDigUrls();
 				if (digModel != null && digModel.getField() != null && !digModel.getField().isEmpty())
 					isDigUrls = true;
@@ -105,7 +106,7 @@ public class DigPointImpl implements DigPoint{
 			
 		}
 		
-		if (urls.isEmpty()){
+		if (!isDigUrls){
 			if (result.getPage() == null) return null;
 			String html = result.getPage().getContent();
 			if (html == null) return null;
