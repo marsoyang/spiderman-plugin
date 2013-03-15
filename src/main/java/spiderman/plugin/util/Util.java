@@ -10,6 +10,7 @@ import java.util.List;
 
 import org.eweb4j.spiderman.task.Task;
 import org.eweb4j.spiderman.url.UrlRuleChecker;
+import org.eweb4j.spiderman.xml.Rules;
 import org.eweb4j.spiderman.xml.Target;
 import org.eweb4j.util.CommonUtil;
 import org.htmlcleaner.HtmlCleaner;
@@ -19,7 +20,8 @@ public class Util {
 	
 	public static Target isTargetUrl(Task task) throws Exception{
 		for (Target target : task.site.getTargets().getTarget()){
-			if (UrlRuleChecker.check(task.url, target.getUrlRules().getRule())){
+			Rules rules = target.getUrlRules();
+			if (UrlRuleChecker.check(task.url, rules.getRule(), rules.getPolicy())){
 				return target;
 			}
 		}

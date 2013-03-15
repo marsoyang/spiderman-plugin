@@ -77,7 +77,7 @@ public class DigPointImpl implements DigPoint{
 				
 				if (isDigUrls) {
 					//判断当前url是否是sourceUrl
-					boolean isSourceUrl = UrlRuleChecker.check(task.url, Arrays.asList(r));
+					boolean isSourceUrl = UrlRuleChecker.check(task.url, Arrays.asList(r), "and");
 					if (isSourceUrl){
 						// 按照digUrlPaser的配置对页面进行解析得到URL
 						Target digTarget = new Target();
@@ -98,7 +98,6 @@ public class DigPointImpl implements DigPoint{
 									urls.add(String.valueOf(val));
 								}
 							}
-								
 						}
 					}
 				}
