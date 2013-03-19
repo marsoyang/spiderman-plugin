@@ -4,20 +4,19 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
+import org.eweb4j.spiderman.fetcher.FetchRequest;
 import org.eweb4j.spiderman.fetcher.FetchResult;
 import org.eweb4j.spiderman.fetcher.Page;
-import org.eweb4j.spiderman.infra.DefaultLinkFinder;
-import org.eweb4j.spiderman.infra.FrameLinkFinder;
-import org.eweb4j.spiderman.infra.IframeLinkFinder;
 import org.eweb4j.spiderman.plugin.DigPoint;
 import org.eweb4j.spiderman.spider.SpiderListener;
 import org.eweb4j.spiderman.task.Task;
 import org.eweb4j.spiderman.url.UrlRuleChecker;
-import org.eweb4j.spiderman.xml.Field;
 import org.eweb4j.spiderman.xml.Model;
 import org.eweb4j.spiderman.xml.Rule;
 import org.eweb4j.spiderman.xml.Rules;
@@ -26,7 +25,7 @@ import org.eweb4j.spiderman.xml.Target;
 
 import spiderman.plugin.util.DefaultLinkNormalizer;
 import spiderman.plugin.util.LinkNormalizer;
-import spiderman.plugin.util.ModelParser;
+import spiderman.plugin.util.UrlUtils;
 import spiderman.plugin.util.Util;
 
 public class DigPointImpl implements DigPoint{
@@ -57,63 +56,53 @@ public class DigPointImpl implements DigPoint{
 		if (result == null)
 			return null;
 		
-		Collection<String> urls = new HashSet<String>();
+		Collection<String> urls = new ArrayList<String>();
 		String moveUrl = result.getMovedToUrl();
 		if (moveUrl != null){
 			if (!moveUrl.equals(task.url))
 				urls.add(moveUrl);
 		}
-		//判断是否定义了digUrls
-		boolean isDigUrls = false;
 		
-		// 如果定义了sourceUrl的digUrls，只是用这个方式发现新url
-		Target target = site.getTargets().getTarget().get(0);
-		Rules rules = target.getSourceRules();
+		Rules rules = site.getTargets().getSourceRules();
+		boolean isDig = false;
 		if (rules != null && rules.getRule() != null && !rules.getRule().isEmpty()){
+			//用来记录分页里已经解析的url
+			Set<String> visitedUrls = new HashSet<String>();
+			visitedUrls.add(task.url);
+			
 			for (Rule r : rules.getRule()){
 				Model digModel = r.getDigUrls();
-				if (digModel != null && digModel.getField() != null && !digModel.getField().isEmpty())
-					isDigUrls = true;
+				if (digModel == null)
+					continue;
+				if (!isDig)
+					isDig = true;
 				
-				if (isDigUrls) {
-					//判断当前url是否是sourceUrl
-					boolean isSourceUrl = UrlRuleChecker.check(task.url, Arrays.asList(r), "and");
-					if (isSourceUrl){
-						// 按照digUrlPaser的配置对页面进行解析得到URL
-						Target digTarget = new Target();
-						digTarget.setModel(digModel);
-						digTarget.setNamespaces(site.getTargets().getTarget().get(0).getNamespaces());
-						ModelParser parser = new ModelParser(task, digTarget, listener);
-						Page sourcePage = result.getPage();
-						List<Map<String, Object>> models = parser.parse(sourcePage);
-						for (Field f : digTarget.getModel().getField()){
-							for (Map<String, Object> model : models){
-								Object val = model.get(f.getName());
-								//如果url是数组
-								if ("1".equals(f.getIsArray()) || "true".equals(f.getIsArray())){
-//									listener.onInfo(Thread.currentThread(), task, "dig new urls->"+(List<String>)val);
-									urls.addAll((List<String>)val);
-								}else{
-//									listener.onInfo(Thread.currentThread(), task, "dig new urls->"+val);
-									urls.add(String.valueOf(val));
-								}
-							}
-						}
-					}
-				}
+				//判断当前url是否是sourceUrl
+				boolean isSourceUrl = UrlRuleChecker.check(task.url, Arrays.asList(r), "and");
+				if (!isSourceUrl)
+					continue;
+				
+				Map<String, Object> finalFields = new HashMap<String,Object>();
+				
+				Target tgt = new Target();
+				tgt.setName("dig_urls");
+				tgt.setModel(digModel);
+				Collection<String> newUrls = UrlUtils.digUrls(result.getPage(), task, r, tgt, listener, finalFields);				
+//				System.out.println("digUrls 得到："+newUrls.size() + " ----->  " + newUrls);
+				//解析Model获得urls
+				urls.addAll(newUrls);
+				
+				//如果配置了下一页，则进入递归解析
+				parseNextPage(r, task, result.getPage(), urls, visitedUrls, finalFields);
 			}
-			
 		}
 		
-		if (!isDigUrls){
+		if (!isDig){
 			if (result.getPage() == null) return null;
 			String html = result.getPage().getContent();
 			if (html == null) return null;
 			
-			urls.addAll(Util.findAllLinkHref(html, task.site.getUrl()));
-			urls.addAll(new DefaultLinkFinder(html).getLinks());
-			urls.addAll(new IframeLinkFinder(html).getLinks());
-			urls.addAll(new FrameLinkFinder(html).getLinks());
+			urls.addAll(UrlUtils.findAllUrls(html, task.url));
 		}
 		
 		//resolveUrl
@@ -121,17 +110,68 @@ public class DigPointImpl implements DigPoint{
 		List<String> newUrls = new ArrayList<String>(urls.size());
 		for (String url : urls) {
 			LinkNormalizer ln = new DefaultLinkNormalizer(hostUrl);
-//			String newUrl = URLCanonicalizer.getCanonicalURL(ln.normalize(url));
 			String newUrl = ln.normalize(url);
+//			String newUrl = URLCanonicalizer.getCanonicalURL(ln.normalize(url));
 			if (newUrl.startsWith("mailto:"))
 				continue;
+			//去重复
 			if (newUrls.contains(newUrl))
 				continue;
 			
 			newUrls.add(newUrl);
 		}
-		
+//		System.out.println("总共得到新url->" + newUrls.size() + ", "+newUrls+" from -> " + task.url);
 		return newUrls;
+		
 	}
 	
+	//递归的额关键是 Page
+	public void parseNextPage(Rule rule, Task task, Page page, Collection<String> urls, Set<String> visitedUrls, Map<String, Object> finalFields) throws Exception{
+//		System.out.println("parse.next->"+page.getUrl());
+		Model mdl = rule.getNextPage();
+		if (mdl == null)
+			return ;
+		
+		Target tgt = new Target();
+		tgt.setName("dig_urls");
+		tgt.setModel(mdl);
+		
+		//解析Model获得next URL
+//		System.out.println("page--!!!!!!----->"+page.getUrl());
+		Collection<String> nextUrls = UrlUtils.digUrls(page, task, rule, tgt, listener, finalFields);
+//		System.out.println("visitedUrls-->>>>>>>>>>>>!!!!!!!!!!!!!!" + visitedUrls);
+//		System.out.println("nextUrls-->>>>>>>>>>>>!!!!!!!!!!!!!!" + nextUrls);
+		if (nextUrls == null || nextUrls.isEmpty())
+			return ;
+		String nextUrl = new ArrayList<String>(nextUrls).get(0);
+		if (nextUrl == null || nextUrl.trim().length() == 0)
+			return ;
+		
+		if (visitedUrls.contains(nextUrl)){
+			return ;
+		}
+		
+		//解析nextPage,找出里面的目标URL
+		Task nextTask = new Task(nextUrl, task.url, task.site, 0);
+		
+		FetchRequest req = new FetchRequest();
+		req.setUrl(nextUrl);
+		FetchResult fr = task.site.fetcher.fetch(req);
+		if (fr == null || fr.getPage() == null)
+			return ;
+		
+		//记录已经访问过该url，下次不要重复访问它
+		visitedUrls.add(nextUrl);
+		Page nextPageResult = fr.getPage();
+		if (nextPageResult.getContent() == null || nextPageResult.getContent().trim().length() == 0)
+			return;
+		
+		//暂时使用默认的发现新URL的逻辑
+		Collection<String> _urls = Util.findAllLinkHref(nextPageResult.getContent(), task.url);
+//		System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!-------- newUrls-------->" + _urls + ", from->"+nextUrl);
+		urls.addAll(_urls);
+		
+		//递归
+		parseNextPage(rule, nextTask, nextPageResult, urls, visitedUrls, finalFields);
+	}
 }

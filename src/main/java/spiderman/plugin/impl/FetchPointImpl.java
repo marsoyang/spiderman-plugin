@@ -1,9 +1,5 @@
 package spiderman.plugin.impl;
 
-import java.net.URL;
-import java.util.Arrays;
-import java.util.List;
-
 import org.eweb4j.spiderman.fetcher.FetchRequest;
 import org.eweb4j.spiderman.fetcher.FetchResult;
 import org.eweb4j.spiderman.plugin.FetchPoint;
@@ -41,35 +37,12 @@ public class FetchPointImpl implements FetchPoint{
 		fetcher.setConfig(config);
 		fetcher.init(null);
 		try {
-			String hostUrl = "http://alldeals.groupon.sg";
-			String url = "http://www.groupon.sg/deals/deals-near-me/sole-relax/716817728?utm_campaign=alldeals&utm_medium=cp_3303884&utm_source=mashup";
-			List<String> validHosts = Arrays.asList("www.groupon.sg", "alldeals.groupon.sg");
-			String taskHost = new URL(url).getHost();
-			System.out.println(validHosts.contains(taskHost));
-			
-			URL siteURL = new URL(hostUrl);
-			URL currURL = new URL(url);
-			String siteHost = siteURL.getHost();
-			System.out.println("site.host->"+siteURL.getHost());
-			String currHost = currURL.getHost();
-			System.out.println("curr.host->"+currHost);
-			System.out.println(currHost.endsWith(siteHost));
-			System.out.println(CommonUtil.isSameHost(hostUrl, url));
-//			FetchRequest req = new FetchRequest();
-//			req.setUrl("http://alldeals.groupon.sg");
-//			FetchResult rs = fetcher.fetch(req);
-//			System.out.println(rs);
-//			Collection<String> urls = Util.findAllLinkHref(rs.getPage().getContent(), "http://alldeals.groupon.sg");
-//			for (String u : urls){
-//				if (!u.startsWith("http://www.groupon.sg/deals/"))
-//					continue;
-//				
-//				System.out.println(u);
-//				req.setUrl(u);
-//				rs = fetcher.fetch(req);
-//				System.out.println(rs);
-//			}
-//			System.out.println(rs.getPage().getContent());
+			String url = "http://www.livingsocial.com/cities/1964-klang-valley-kuala-lumpur/deals/638602-patong-bay-resotel-return-flight?append_ref_code=source_cities_show";
+			FetchRequest req = new FetchRequest();
+			req.setUrl(url);
+			FetchResult rs = fetcher.fetch(req);
+			System.out.println(rs);
+			System.out.println(rs.getPage().getContent());
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -87,6 +60,8 @@ public class FetchPointImpl implements FetchPoint{
 					config.setCharset(task.site.getCharset());
 				if (task.site.getUserAgent() != null && task.site.getUserAgent().trim().length() > 0)
 					config.setUserAgentString(task.site.getUserAgent());
+				if (task.site.getIncludeHttps() != null && task.site.getIncludeHttps().trim().length() > 0)
+					config.setIncludeHttpsPages("1".equals(task.site.getIncludeHttps()) || "true".equals(task.site.getIncludeHttps()));
 				String sdelay = task.site.getReqDelay();
 				if (sdelay == null || sdelay.trim().length() == 0)
 					sdelay = "200";

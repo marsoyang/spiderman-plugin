@@ -7,7 +7,6 @@ import org.eweb4j.spiderman.plugin.DupRemovalPoint;
 import org.eweb4j.spiderman.spider.SpiderListener;
 import org.eweb4j.spiderman.task.Task;
 import org.eweb4j.spiderman.url.SourceUrlChecker;
-import org.eweb4j.spiderman.xml.Rules;
 import org.eweb4j.spiderman.xml.Site;
 import org.eweb4j.spiderman.xml.Target;
 import org.eweb4j.util.CommonUtil;
@@ -46,8 +45,7 @@ public class DupRemovalPointImpl implements DupRemovalPoint{
 			Task newTask = new Task(url, task.url, site, 10);
 			try {
 				Target tgt = Util.isTargetUrl(newTask);
-				Rules rules = site.getTargets().getTarget().get(0).getSourceRules();
-				boolean isFromSourceUrl = SourceUrlChecker.checkSourceUrl(rules, newTask.sourceUrl, rules.getPolicy());
+				boolean isFromSourceUrl = SourceUrlChecker.checkSourceUrl(site.getTargets().getSourceRules(), newTask.sourceUrl);
 				//如果是目标url，但不是来自来源url，跳过
 				if (tgt != null && !isFromSourceUrl){
 					continue;
@@ -68,7 +66,6 @@ public class DupRemovalPointImpl implements DupRemovalPoint{
 					validTasks.add(newTask);
 					this.site.db.newDocID(docKey);
 				}
-			
 			}catch (Exception e){
 				listener.onError(Thread.currentThread(), newTask, "", e);
 			}

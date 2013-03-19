@@ -8,7 +8,6 @@ import org.eweb4j.spiderman.plugin.TaskPushPoint;
 import org.eweb4j.spiderman.spider.SpiderListener;
 import org.eweb4j.spiderman.task.Task;
 import org.eweb4j.spiderman.url.SourceUrlChecker;
-import org.eweb4j.spiderman.xml.Rules;
 import org.eweb4j.spiderman.xml.Site;
 import org.eweb4j.spiderman.xml.Target;
 import org.eweb4j.spiderman.xml.ValidHost;
@@ -37,6 +36,7 @@ public class TaskPushPointImpl implements TaskPushPoint{
 				//如果不是在给定的合法host列表里则不给于抓取
 				ValidHosts vhs = task.site.getValidHosts();
 				if (vhs == null || vhs.getValidHost() == null || vhs.getValidHost().isEmpty()){
+//					System.out.println("isSameHost?->"+CommonUtil.isSameHost(task.site.getUrl(), task.url)+", url->"+task.url);
 					if (!CommonUtil.isSameHost(task.site.getUrl(), task.url))
 						continue;
 				}else{
@@ -57,17 +57,17 @@ public class TaskPushPointImpl implements TaskPushPoint{
 				try {
 					//如果是目标url且是从sourceUrl来的，就是有效的
 					Target tgt = Util.isTargetUrl(task);
-					Rules rules = task.site.getTargets().getTarget().get(0).getSourceRules();
-					boolean isFromSourceUrl = SourceUrlChecker.checkSourceUrl(rules, task.sourceUrl, rules.getPolicy());
+					boolean isFromSourceUrl = SourceUrlChecker.checkSourceUrl(site.getTargets().getSourceRules(), task.sourceUrl);
 					if (tgt != null && isFromSourceUrl){
 						isValid = true;
 					}
-					
+//					System.out.println("isFromSourceUrl->"+isFromSourceUrl+", isTgt->"+tgt==null+", url->"+task.url);
 					//如果它本身就是sourceUrl，也应该是有效的
-					boolean isSourceUrl = SourceUrlChecker.checkSourceUrl(rules, task.url, rules.getPolicy());
+					boolean isSourceUrl = SourceUrlChecker.checkSourceUrl(site.getTargets().getSourceRules(), task.url);
 					if (isSourceUrl){
 						isValid = true;
 					}
+//					System.out.println("isSourceUrl->"+isFromSourceUrl+", isTgt->"+tgt==null+", url->"+task.url);
 				} catch (Exception e){
 					listener.onError(Thread.currentThread(), task, "", e);
 				}

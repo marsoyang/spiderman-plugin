@@ -35,10 +35,12 @@ import org.apache.http.Header;
 import org.apache.http.HeaderElement;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpException;
+import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpResponseInterceptor;
 import org.apache.http.HttpStatus;
 import org.apache.http.HttpVersion;
+import org.apache.http.ProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.params.ClientPNames;
@@ -49,6 +51,7 @@ import org.apache.http.conn.scheme.SchemeRegistry;
 import org.apache.http.conn.ssl.SSLSocketFactory;
 import org.apache.http.entity.HttpEntityWrapper;
 import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.impl.client.DefaultRedirectStrategy;
 import org.apache.http.impl.conn.tsccm.ThreadSafeClientConnManager;
 import org.apache.http.impl.cookie.BasicClientCookie;
 import org.apache.http.params.BasicHttpParams;
@@ -151,7 +154,24 @@ public class PageFetcherImpl implements PageFetcher{
 		
 		httpClient.getParams().setIntParameter("http.socket.timeout", 60000);
 		httpClient.getParams().setParameter(ClientPNames.COOKIE_POLICY, CookiePolicy.BEST_MATCH);
-
+//		httpClient.setRedirectStrategy(new DefaultRedirectStrategy() {                
+//	        public boolean isRedirected(HttpRequest request, HttpResponse response, HttpContext context)  {
+//	            boolean isRedirect=false;
+//	            try {
+//	                isRedirect = super.isRedirected(request, response, context);
+//	            } catch (ProtocolException e) {
+//	                e.printStackTrace();
+//	            }
+//	            if (!isRedirect) {
+//	                int responseCode = response.getStatusLine().getStatusCode();
+//	                if (responseCode == 301 || responseCode == 302) {
+//	                    return true;
+//	                }
+//	            }
+//	            return isRedirect;
+//	        }
+//	    });
+		
 		//设置响应拦截器
         httpClient.addResponseInterceptor(new HttpResponseInterceptor() {
             public void process(final HttpResponse response, final HttpContext context) throws HttpException, IOException {

@@ -22,6 +22,8 @@ public class Util {
 		for (Target target : task.site.getTargets().getTarget()){
 			Rules rules = target.getUrlRules();
 			if (UrlRuleChecker.check(task.url, rules.getRule(), rules.getPolicy())){
+				if (task.target == null)
+					task.target = target;
 				return target;
 			}
 		}
@@ -42,7 +44,10 @@ public class Util {
 				continue;
 			
 			if (!href.startsWith("https://") && !href.startsWith("http://")){
-				href = new StringBuilder("http://").append(new URL(hostUrl).getHost()).append("/").append(href).toString();
+				StringBuilder sb = new StringBuilder("http://").append(new URL(hostUrl).getHost());
+				if (!href.startsWith("/"))
+					sb.append("/");
+				href = sb.append(href).toString();
 			}
 //			href = URLCanonicalizer.getCanonicalURL(href);
 			if (href == null)

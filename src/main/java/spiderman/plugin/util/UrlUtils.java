@@ -1,5 +1,21 @@
 package spiderman.plugin.util;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+
+import org.eweb4j.spiderman.fetcher.Page;
+import org.eweb4j.spiderman.infra.DefaultLinkFinder;
+import org.eweb4j.spiderman.infra.FrameLinkFinder;
+import org.eweb4j.spiderman.infra.IframeLinkFinder;
+import org.eweb4j.spiderman.spider.SpiderListener;
+import org.eweb4j.spiderman.task.Task;
+import org.eweb4j.spiderman.xml.Field;
+import org.eweb4j.spiderman.xml.Rule;
+import org.eweb4j.spiderman.xml.Target;
+
 /**
  * Code copied from HtmlUnit
  * (src/main/java/com/gargoylesoftware/htmlunit/util/UrlUtils.java)
@@ -14,6 +30,47 @@ public final class UrlUtils {
 		String baseUrl = "http://cheapcheap.sg/xom/";
 		String url = "cheap_n_deals_detail-Deal-20-for-Gelish-Manicure-+-Soak-Off-at-Specialist-Nail--Beauty-spa-@-Orchard--deal_id-1102-catid-5.htm";
 		System.out.println(resolveUrl(baseUrl, url));
+	}
+	
+	public static Collection<String> findAllUrls(String html, String hostUrl){
+		Collection<String> urls = new HashSet<String>();
+		try {
+			urls.addAll(Util.findAllLinkHref(html, hostUrl));
+			urls.addAll(new DefaultLinkFinder(html).getLinks());
+			urls.addAll(new IframeLinkFinder(html).getLinks());
+			urls.addAll(new FrameLinkFinder(html).getLinks());
+		}catch (Exception e){
+			e.printStackTrace();
+		}
+		return urls;
+	}
+	
+	public static Collection<String> digUrls(Page pg, Task task, Rule r, Target tgt, SpiderListener lst, Map<String, Object> finalFields) throws Exception {
+		Collection<String> urls = new ArrayList<String>();
+		if (tgt.getModel() == null)
+			return urls;
+		ModelParser parser = new ModelParser(task, tgt, lst);
+		parser.setFinalFields(finalFields);
+		List<Map<String, Object>> models = parser.parse(pg);
+		for (Field f : tgt.getModel().getField()){
+			//如果是变量，跳过
+			if ("1".equals(f.getIsArg()) || "true".equals(f.getIsArg()))
+				continue;
+			
+			for (Map<String, Object> model : models){
+				Object val = model.get(f.getName());
+				if (val == null)
+					continue;
+				//如果url是数组
+				if ("1".equals(f.getIsArray()) || "true".equals(f.getIsArray())){
+					urls.addAll((List<String>)val);
+				}else{
+					urls.add(String.valueOf(val));
+				}
+			}
+		}
+		
+		return urls;
 	}
 	
 	public static String resolveUrl(final String baseUrl, final String relativeUrl) {
